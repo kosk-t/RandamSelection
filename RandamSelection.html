@@ -1,0 +1,944 @@
+<!doctype html>
+<html lang="ja" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ポイント制 抽選ツール</title>
+  <style>
+    :root{--bg:#0f0f23;--panel:#1a1a2e;--panel-soft:#25253f;--panel-exclude:#2d1b1b;--text:#f0f4f8;--muted:#a0a9b8;--accent:#00d4aa;--accent2:#7c3aed;--border:rgba(255,255,255,.15);--ink:#ffffff;--shadow:0 20px 50px rgba(0,0,0,.4);--input-bg:#16213e;--table-head:#1e2749;--badge:#1e2749;--result-bg:linear-gradient(135deg,#667eea,#764ba2);--success:#10b981;--warning:#f59e0b;--danger:#ef4444}
+    html[data-theme="light"]{--bg:#fafbfc;--panel:#ffffff;--panel-soft:#f8fafc;--panel-exclude:#fef2f2;--text:#1e293b;--muted:#64748b;--accent:#0ea5e9;--accent2:#8b5cf6;--border:rgba(15,23,42,.08);--ink:#ffffff;--shadow:0 20px 50px rgba(15,23,42,.1);--input-bg:#ffffff;--table-head:#f1f5f9;--badge:#f1f5f9;--result-bg:linear-gradient(135deg,#667eea,#764ba2);--success:#059669;--warning:#d97706;--danger:#dc2626}
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Inter',sans-serif;background:radial-gradient(1200px 600px at 10% -10%, rgba(0,212,170,.08), transparent),radial-gradient(1200px 600px at 110% 10%, rgba(124,58,237,.06), transparent),var(--bg);color:var(--text);margin:0;line-height:1.6;font-weight:400}
+    .wrap{max-width:1200px;margin:28px auto;padding:0 20px}
+    @media (max-width:480px){.wrap{margin:16px auto;padding:0 12px}}
+    header.appbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    header .title{font-size:clamp(22px,4vw,32px);font-weight:800;letter-spacing:.2px}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+    .btn{position:relative;cursor:pointer;border:none;border-radius:16px;padding:12px 20px;font-weight:600;transition:all 0.2s cubic-bezier(0.4,0,0.2,1);font-size:14px;letter-spacing:0.025em;min-height:44px;display:flex;align-items:center;justify-content:center}
+    @media (max-width:480px){.btn{padding:14px 18px;font-size:16px;min-height:48px}}
+    .btn.primary{color:white;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 12px 32px rgba(0,212,170,.25);transform:translateY(0)}
+    .btn.secondary{color:var(--text);background:var(--panel-soft);border:1px solid var(--border)}
+    .btn.ghost{color:var(--text);background:transparent;border:1px solid var(--border)}
+    .btn:hover{transform:translateY(-2px);box-shadow:0 16px 40px rgba(0,212,170,.35)}
+    .btn:active{transform:translateY(0);box-shadow:0 8px 24px rgba(0,212,170,.25)}
+    .card{background:linear-gradient(180deg,var(--panel),var(--panel-soft));padding:24px;border-radius:20px;margin-bottom:24px;border:1px solid var(--border);box-shadow:var(--shadow);backdrop-filter:blur(12px);transition:box-shadow 0.2s ease,border-color 0.2s ease}
+    .card:hover{box-shadow:0 20px 50px rgba(0,0,0,.3);border-color:rgba(255,255,255,.3)}
+    .card h3{margin:0 0 10px}
+    .card.exclude{background:linear-gradient(180deg,var(--panel-exclude),#ffb3b3);border-color:#ff8b8b66}
+    .card.exclude h3{display:flex;align-items:center;gap:8px}
+    .chip{display:inline-block;font-size:11px;padding:3px 10px;border-radius:999px;border:1px solid #ffd8d8;color:#4b1014;background:#ffd8d8;mix-blend:screen}
+    textarea{width:100%;height:120px;resize:vertical;background:var(--input-bg);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px;font-family:ui-monospace,Consolas,monospace;font-size:14px}
+    @media (max-width:480px){
+      textarea{height:100px;font-size:16px;padding:12px}
+    }
+    .form-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+    @media (max-width:480px){
+      .form-row{flex-direction:column;gap:12px}
+      .form-row .pill{width:100%;justify-content:space-between}
+    }
+    .pill{display:inline-flex;gap:10px;align-items:center;background:rgba(255,255,255,.06);border:1px solid var(--border);padding:8px 12px;border-radius:999px;min-height:44px}
+    @media (max-width:480px){.pill{padding:12px 16px;min-height:48px}}
+    html[data-theme="light"] .pill{background:#fff}
+    input[type=number]{width:110px;min-height:32px;font-size:16px}
+    @media (max-width:480px){
+      input[type=number]{width:80px;font-size:18px;min-height:36px}
+      input[type=text]{font-size:16px;min-height:36px}
+    }
+    .statsbar{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:12px;color:var(--muted);font-size:14px}
+    @media (max-width:480px){
+      .statsbar{flex-direction:column;gap:8px;font-size:13px}
+    }
+    .table-scroll{max-height:460px;overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--panel-soft);margin-top:12px;-webkit-overflow-scrolling:touch}
+    @media (max-width:480px){
+      .table-scroll{max-height:300px;font-size:14px}
+      th,td{padding:8px 10px;font-size:13px}
+    }
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:12px 14px;border-bottom:1px solid rgba(2,6,23,.08);font-size:14px;word-break:break-word}
+    th{color:inherit;text-align:left;position:sticky;top:0;background:var(--table-head);z-index:1}
+    td.mono,th.mono{font-family:ui-monospace,Consolas,monospace}
+    .results{position:fixed;top:0;left:0;right:0;bottom:0;margin:auto;background:var(--result-bg);border:1px solid var(--border);border-radius:24px;padding:32px;box-shadow:0 25px 75px rgba(0,0,0,.5);backdrop-filter:blur(20px);max-width:600px;width:90vw;height:fit-content;max-height:80vh;z-index:1000;opacity:0;visibility:hidden;transition:opacity 0.3s ease,visibility 0.3s ease}
+    .results.show{opacity:1;visibility:visible}
+    .results-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.6);z-index:999;opacity:0;visibility:hidden;transition:all 0.3s ease}
+    .results-overlay.show{opacity:1;visibility:visible}
+    .results-header{display:flex;justify-content:center;align-items:center;margin-bottom:24px}
+    .close-btn{position:absolute;top:16px;right:16px;width:32px;height:32px;border:none;background:rgba(255,255,255,.1);color:white;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all 0.2s ease}
+    .close-btn:hover{background:rgba(255,255,255,.2);transform:scale(1.1)}
+    .copy-actions{position:absolute;top:16px;right:56px;display:flex;gap:8px;opacity:1;transition:opacity 0.2s ease;flex-direction:column;align-items:flex-end}
+    @media (hover:hover){
+      .copy-actions{opacity:0}
+      .results:hover .copy-actions{opacity:1}
+    }
+    .copy-btn{position:relative;height:32px;min-width:32px;border:none;background:rgba(255,255,255,.08);color:white;border-radius:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);border:1px solid rgba(255,255,255,.1);overflow:hidden;white-space:nowrap}
+    .copy-btn .btn-text{max-width:0;opacity:0;margin-left:0;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);font-size:11px;font-weight:500}
+    @media (hover:hover){
+      .results:hover .copy-btn{background:rgba(255,255,255,.12);min-width:120px}
+      .results:hover .copy-btn .btn-text{max-width:80px;opacity:1;margin-left:6px}
+    }
+    @media (hover:none){
+      .copy-btn{background:rgba(255,255,255,.12);min-width:120px}
+      .copy-btn .btn-text{max-width:80px;opacity:1;margin-left:6px}
+    }
+    .copy-btn:hover{background:rgba(255,255,255,.2);transform:scale(1.02)}
+    
+    
+    /* ヒント表示システム */
+    .help-toggle{position:fixed;bottom:20px;right:20px;width:48px;height:48px;border-radius:50%;background:rgba(0,212,170,.8);color:white;border:none;font-size:20px;cursor:pointer;z-index:1100;box-shadow:0 4px 16px rgba(0,212,170,.3);transition:all 0.3s ease;backdrop-filter:blur(10px)}
+    .help-toggle:hover{transform:scale(1.1);box-shadow:0 6px 20px rgba(0,212,170,.4)}
+    .help-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.7);z-index:1200;opacity:0;visibility:hidden;transition:all 0.3s ease}
+    .help-overlay.show{opacity:1;visibility:visible}
+    .help-content{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:400px;width:90vw;z-index:1201;box-shadow:var(--shadow)}
+    .help-title{font-size:18px;font-weight:700;margin-bottom:16px;color:var(--accent)}
+    .help-step{margin-bottom:12px;font-size:14px;line-height:1.5}
+    .help-step strong{color:var(--accent);font-weight:600}
+    .help-close{position:absolute;top:12px;right:12px;width:32px;height:32px;border:none;background:transparent;color:var(--muted);border-radius:50%;cursor:pointer;font-size:16px;transition:all 0.2s ease}
+    .help-close:hover{background:var(--border);color:var(--text)}
+    @media (max-width:480px){
+      .help-toggle{bottom:16px;right:16px;width:52px;height:52px;font-size:22px}
+      .help-content{padding:20px;border-radius:12px}
+    }
+    .results-title{font-weight:700;letter-spacing:0.025em;font-size:24px;margin-bottom:8px;color:white}
+    .result-badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .badge{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);padding:12px 20px;border-radius:999px;backdrop-filter:blur(10px);color:white;font-weight:600;font-size:16px;transition:transform 0.2s ease}
+    .badge:hover{transform:scale(1.05)}
+    
+    /* Products */
+    .product-item{margin-bottom:8px;padding:12px;background:rgba(255,255,255,.02);border-radius:12px;border:1px solid var(--border)}
+    .product-name{width:180px;min-height:32px;font-size:16px}
+    @media (max-width:480px){
+      .product-name{width:100%;font-size:16px;min-height:36px}
+    }
+    .product-winners{width:80px}
+    .remove-product{font-size:12px;padding:6px 12px}
+    
+    @media (min-width:900px){.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:24px}}
+    @media (max-width:768px){
+      .results{padding:24px;max-width:95vw;max-height:85vh}
+      .badge{font-size:14px;padding:10px 16px}
+      .grid-2{display:block}
+    }
+    @media (max-width:480px){
+      .results{padding:20px;max-width:98vw;max-height:90vh;border-radius:16px}
+      .results-title{font-size:20px}
+      .badge{font-size:16px;padding:12px 18px;min-height:44px;display:flex;align-items:center;justify-content:center}
+      .close-btn{width:44px;height:44px;font-size:20px;top:12px;right:12px}
+      .copy-actions{top:12px;right:64px;opacity:1}
+      .copy-btn{min-height:44px;font-size:13px}
+      .toolbar{justify-content:center;gap:12px}
+      .wrap{position:relative}
+    }
+    
+    @keyframes bounce{0%,20%,50%,80%,100%{transform:translateY(0)}40%{transform:translateY(-20px)}60%{transform:translateY(-10px)}}
+    @keyframes fadeInUp{0%{opacity:0;transform:translateY(30px)}100%{opacity:1;transform:translateY(0)}}
+    @keyframes slideInFromLeft{0%{opacity:0;transform:translateX(-50px)}100%{opacity:1;transform:translateX(0)}}
+    
+    /* Winner Badge Animations */
+    .badge{animation:fadeInUp 0.6s ease-out forwards;opacity:0}
+    .badge:nth-child(1){animation-delay:0.1s}
+    .badge:nth-child(2){animation-delay:0.3s}
+    .badge:nth-child(3){animation-delay:0.5s}
+    .badge:nth-child(4){animation-delay:0.7s}
+    .badge:nth-child(5){animation-delay:0.9s}
+    
+    /* Enhanced Confetti Effect */
+    .confetti{position:absolute;animation:confetti-fall linear infinite;pointer-events:none}
+    .confetti.rect{width:12px;height:8px}
+    .confetti.circle{width:10px;height:10px;border-radius:50%}
+    .confetti.triangle{width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:10px solid}
+    .confetti.star{width:0;height:0;position:relative;display:inline-block}
+    .confetti.star:before,.confetti.star:after{content:'';position:absolute;left:-6px;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:4px solid;transform:rotate(35deg)}
+    .confetti.star:after{transform:rotate(-35deg)}
+    @keyframes confetti-fall{0%{transform:translateY(-150px) rotateZ(0deg) rotateX(0deg) rotateY(0deg);opacity:1}100%{transform:translateY(calc(100vh + 100px)) rotateZ(720deg) rotateX(360deg) rotateY(180deg);opacity:0}}
+    @keyframes confetti-shake{0%,100%{transform:translateX(0px)}25%{transform:translateX(5px)}75%{transform:translateX(-5px)}}
+    
+    /* Cracker Effect */
+    @keyframes cracker-burst{0%{transform:scale(0) rotate(0deg);opacity:1}30%{transform:scale(1.2) rotate(180deg);opacity:0.8}100%{transform:scale(2) rotate(360deg);opacity:0}}
+    
+    /* Drawing Animation */
+    .drawing{animation:bounce 0.5s ease-in-out infinite}
+    
+    /* Success Pulse */
+    .success-pulse{animation:success-pulse 0.8s ease-out}
+    @keyframes success-pulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="appbar">
+      <div class="title">ポイント制 抽選ツール</div>
+      <div class="toolbar">
+        <button id="btnSave" class="btn secondary" title="現在の設定を保存">💾 保存</button>
+        <button id="btnReset" class="btn ghost" title="すべてを初期状態に戻す">🔄 リセット</button>
+        <button id="btnTheme" class="btn ghost" aria-label="テーマ切り替え">🌙 ダーク</button>
+      </div>
+    </header>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>リスト A</h3>
+        <textarea id="listA" placeholder="1行に1名を貼り付け"></textarea>
+        <div class="form-row"><span class="pill">ポイント <input id="pointsA" type="number" value="1" step="0.1" min="0"></span></div>
+      </div>
+      <div class="card">
+        <h3>リスト B</h3>
+        <textarea id="listB" placeholder="1行に1名を貼り付け"></textarea>
+        <div class="form-row"><span class="pill">ポイント <input id="pointsB" type="number" value="1" step="0.1" min="0"></span></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>リスト C</h3>
+        <textarea id="listC" placeholder="1行に1名を貼り付け"></textarea>
+        <div class="form-row"><span class="pill">ポイント <input id="pointsC" type="number" value="1" step="0.1" min="0"></span></div>
+      </div>
+      <div class="card exclude">
+        <h3>除外リスト <span class="chip">EXCLUDE</span></h3>
+        <textarea id="exclude" placeholder="対象外の名前（1行に1名）"></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>抽選設定</h3>
+      <div class="form-row">
+        <label class="pill"><input id="uniquePerList" type="checkbox" checked> 同一リスト内の重複行は1件として扱う</label>
+        <span class="pill">最小ポイント <input id="minPoints" type="number" value="1" step="0.1" min="0"></span>
+      </div>
+      
+      <div style="margin-top:16px;">
+        <h4 style="margin:0 0 8px 0;">商品・景品設定</h4>
+        <div id="productsContainer">
+          <div class="product-item" data-index="0">
+            <div class="form-row">
+              <span class="pill">商品名 <input type="text" class="product-name" value="" placeholder="空欄で自動設定"></span>
+              <span class="pill">当選人数 <input type="number" class="product-winners" value="1" min="1"></span>
+              <button type="button" class="btn ghost remove-product" style="display:none;">削除</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-row" style="margin-top:8px;">
+          <button id="btnAddProduct" class="btn ghost">+ 商品を追加</button>
+        </div>
+      </div>
+      
+      <div class="form-row" style="margin-top:16px">
+        <button id="btnPreview" class="btn secondary">確率を計算</button>
+        <button id="btnDraw" class="btn primary">抽選する</button>
+      </div>
+      <div class="statsbar">
+        <div id="statsLeft">候補 0 名</div>
+        <div id="statsRight">総ポイント 0.00</div>
+      </div>
+      <div class="table-scroll" id="tableWrap"></div>
+
+  </div>
+
+  <!-- Results Modal -->
+  <div class="results-overlay" id="resultsOverlay"></div>
+  <div class="results" id="resultsPanel">
+    <button class="close-btn" id="closeResults">×</button>
+    <div class="results-header">
+      <div class="results-title" id="resultsTitle">🎉 当選 0 名</div>
+    </div>
+    <div class="copy-actions">
+      <button id="btnCopyNames" class="copy-btn">
+        📋
+        <span class="btn-text">名前をコピー</span>
+      </button>
+      <button id="btnCopyCSV" class="copy-btn">
+        📊
+        <span class="btn-text">CSVをコピー</span>
+      </button>
+    </div>
+    <div class="result-badges" id="winnersBadges"></div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const listA = $("listA"), listB = $("listB"), listC = $("listC");
+  const pointsA = $("pointsA"), pointsB = $("pointsB"), pointsC = $("pointsC");
+  const exclude = $("exclude");
+  const uniquePerList = $("uniquePerList"), minPoints = $("minPoints");
+  const productsContainer = $("productsContainer"), btnAddProduct = $("btnAddProduct");
+  const statsLeft = $("statsLeft"), statsRight = $("statsRight"), tableWrap = $("tableWrap");
+  const resultsPanel = $("resultsPanel"), resultsOverlay = $("resultsOverlay"), winnersBadges = $("winnersBadges"), resultsTitle = $("resultsTitle");
+  const btnCopyNames = $("btnCopyNames"), btnCopyCSV = $("btnCopyCSV");
+  const btnTheme = $("btnTheme"), closeResults = $("closeResults"), btnSave = $("btnSave"), btnReset = $("btnReset");
+  const copyHint = $("copyHint");
+
+  let pool = new Map();
+  let lastWinners = [];
+  let confettiContainer = null;
+  let confettiInterval = null;
+  let productIndex = 1;
+
+  function parseList(txt){
+    if(!txt) return [];
+    return txt.split(/\r?\n|\r/).map(s=>s.trim()).filter(Boolean);
+  }
+
+  function normalize(s){
+    try { return s.trim().normalize('NFKC').toLowerCase(); }
+    catch (e) { return s.trim().toLowerCase(); }
+  }
+
+  function buildPool(){
+    pool.clear();
+    const excludes = new Set(parseList(exclude.value).map(normalize));
+    const lists = [
+      { rows: parseList(listA.value), p: parseFloat(pointsA.value)||0 },
+      { rows: parseList(listB.value), p: parseFloat(pointsB.value)||0 },
+      { rows: parseList(listC.value), p: parseFloat(pointsC.value)||0 }
+    ];
+    for(const {rows,p} of lists){
+      const seen = new Set();
+      for(const raw of rows){
+        const key = normalize(raw);
+        if(!key || excludes.has(key)) continue;
+        if(uniquePerList.checked && seen.has(key)) continue;
+        seen.add(key);
+        const cur = pool.get(key) || { name: raw.trim(), points: 0 };
+        cur.points += p;
+        if(raw.trim().length > cur.name.length) cur.name = raw.trim();
+        pool.set(key, cur);
+      }
+    }
+    const min = parseFloat(minPoints.value)||0;
+    if(min > 0){
+      for(const [k,v] of pool){ if(v.points < min) pool.delete(k); }
+    }
+  }
+
+  function totals(){
+    let total = 0; pool.forEach(v=> total += v.points); return total;
+  }
+
+  function renderTable(){
+    const totalPts = totals();
+    const rows = [...pool.values()].sort((a,b)=> b.points - a.points);
+    statsLeft.textContent = `候補 ${rows.length} 名`;
+    statsRight.textContent = `総ポイント ${totalPts.toFixed(2)}`;
+    if(rows.length === 0){ tableWrap.innerHTML = ''; return; }
+    const html = `
+      <table>
+        <thead><tr><th>名前</th><th class="mono">ポイント</th><th class="mono">当選確率(%)</th></tr></thead>
+        <tbody>
+          ${rows.map(r=>`<tr><td>${escapeHtml(r.name)}</td><td class="mono">${r.points.toFixed(2)}</td><td class="mono">${totalPts? (r.points/totalPts*100).toFixed(2):'0.00'}</td></tr>`).join('')}
+        </tbody>
+      </table>`;
+    tableWrap.innerHTML = html;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m]));
+  }
+
+
+  function getRandom(){
+    // 新しいブラウザ: crypto.getRandomValues使用
+    if(window.crypto && window.crypto.getRandomValues){
+      try {
+        const arr = new Uint32Array(2); 
+        window.crypto.getRandomValues(arr);
+        const a = arr[0]>>>5, b = arr[1]>>>6; 
+        return (a*67108864 + b) / 9007199254740992;
+      } catch(e) {
+        console.warn('暗号化乱数生成失敗:', e);
+      }
+    }
+    // フォールバック: Math.random()
+    return Math.random();
+  }
+
+  function weightedPick(arr){
+    const total = arr.reduce((s,e)=> s + e.points, 0);
+    if(total <= 0) return null;
+    let r = getRandom() * total;
+    for(const e of arr){ if((r -= e.points) <= 0) return e; }
+    return arr[arr.length-1] || null;
+  }
+
+  function preview(){
+    buildPool();
+    renderTable();
+  }
+
+  function getProducts(){
+    const products = [];
+    document.querySelectorAll('.product-item').forEach((item, index) => {
+      const rawName = item.querySelector('.product-name').value;
+      // 特殊文字、制御文字を除去して正規化
+      const name = rawName
+        .replace(/[\u0000-\u001F\u007F-\u009F\u2000-\u200F\u2028-\u202F\u205F-\u206F\uFEFF]/g, '')
+        .trim()
+        .slice(0, 50); // 最大50文字まで
+      const winners = Math.max(1, Math.min(1000, parseInt(item.querySelector('.product-winners').value) || 1)); // 1-1000の範囲
+      const productName = name || (winners === 1 ? `${index + 1}等` : `${index + 1}等 (${winners}名)`);
+      products.push({name: productName, winners});
+    });
+    return products.length > 0 ? products : [{name: '1等', winners: 1}];
+  }
+
+  function draw(){
+    buildPool();
+    const arr = [...pool.values()].filter(e=>e.points>0);
+    if(arr.length === 0){
+      alert('抽選対象者がいません');
+      return;
+    }
+    
+    const products = getProducts();
+    const allWinners = [];
+    const availableCandidates = [...arr];
+    
+    for(const product of products){
+      const productWinners = [];
+      for(let i = 0; i < product.winners; i++){
+        if(availableCandidates.length === 0) break;
+        const winner = weightedPick(availableCandidates);
+        if(!winner) break;
+        
+        productWinners.push(winner);
+        const idx = availableCandidates.findIndex(e=> normalize(e.name) === normalize(winner.name));
+        if(idx >= 0) availableCandidates.splice(idx, 1);
+      }
+      if(productWinners.length > 0){
+        allWinners.push({
+          product: product.name,
+          winners: productWinners
+        });
+      }
+    }
+    
+    lastWinners = allWinners;
+    showResultsWithAnimation();
+    renderTable();
+  }
+
+  function updateResults(){
+    if(!lastWinners || lastWinners.length === 0){
+      resultsTitle.textContent = '😅 当選なし';
+      winnersBadges.innerHTML = '<span class="badge">今回は当選者がいませんでした</span>';
+      return;
+    }
+    
+    // 商品別結果の場合
+    if(lastWinners[0] && lastWinners[0].product){
+      const totalWinners = lastWinners.reduce((sum, p) => sum + p.winners.length, 0);
+      resultsTitle.textContent = `🎉 当選 ${totalWinners} 名`;
+      
+      let badgesHtml = '';
+      lastWinners.forEach(productResult => {
+        badgesHtml += `<div style="margin-bottom:16px;"><h4 style="margin:0 0 8px;color:white;font-size:16px;">${escapeHtml(productResult.product)}</h4>`;
+        badgesHtml += productResult.winners.map(winner => `<span class="badge">${escapeHtml(winner.name)}</span>`).join(' ');
+        badgesHtml += '</div>';
+      });
+      winnersBadges.innerHTML = badgesHtml;
+      
+      // コピー用データ
+      const names = lastWinners.map(p => 
+        `${p.product}:\n${p.winners.map(w => w.name).join('\n')}`
+      ).join('\n\n');
+      
+      const csv = 'product,name,points\n' + lastWinners.map(p => 
+        p.winners.map(w => `${csvq(p.product)},${csvq(w.name)},${w.points}`).join('\n')
+      ).join('\n');
+      
+      btnCopyNames.onclick = () => doCopy(names, '✅ 名前をコピーしました');
+      btnCopyCSV.onclick = () => doCopy(csv, '✅ CSVをコピーしました');
+    }
+    // 従来の単純結果の場合
+    else {
+      const n = lastWinners.length;
+      resultsTitle.textContent = n > 0 ? `🎉 当選 ${n} 名` : '😅 当選なし';
+      winnersBadges.innerHTML = n ? lastWinners.map(p=>`<span class="badge">${escapeHtml(p.name)}</span>`).join('') : '<span class="badge">今回は当選者がいませんでした</span>';
+      const names = lastWinners.map(p=>p.name).join("\n");
+      const csv = 'name,points\n' + lastWinners.map(p=>`${csvq(p.name)},${p.points}`).join("\n");
+      btnCopyNames.onclick = () => doCopy(names, '✅ 名前をコピーしました');
+      btnCopyCSV.onclick = () => doCopy(csv, '✅ CSVをコピーしました');
+    }
+  }
+
+  function showResultsModal(){
+    resultsOverlay.classList.add('show');
+    resultsPanel.classList.add('show');
+    document.body.style.overflow = 'hidden';
+    
+    // 初回ヒント表示
+    setTimeout(() => {
+      copyHint.classList.add('show-hint');
+    }, 1000);
+  }
+
+  function hideResultsModal(){
+    resultsOverlay.classList.remove('show');
+    resultsPanel.classList.remove('show');
+    document.body.style.overflow = 'auto';
+    
+    // 紙吹雪を停止
+    stopConfetti();
+  }
+
+  function showResultsWithAnimation(){
+    // 結果モーダル表示
+    showResultsModal();
+    updateResults();
+    
+    // 当選者がいる場合の演出
+    if(lastWinners.length > 0){
+      startContinuousConfetti();
+    }
+    
+    // 成功パルス効果
+    resultsPanel.classList.add('success-pulse');
+    setTimeout(() => resultsPanel.classList.remove('success-pulse'), 800);
+  }
+  
+
+  function createSuperConfetti(){
+    const confettiContainer = document.createElement('div');
+    confettiContainer.style.position = 'fixed';
+    confettiContainer.style.top = '0';
+    confettiContainer.style.left = '0';
+    confettiContainer.style.width = '100vw';
+    confettiContainer.style.height = '100vh';
+    confettiContainer.style.pointerEvents = 'none';
+    confettiContainer.style.zIndex = '1500';
+    
+    const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#f0932b', '#eb4d4b', '#6c5ce7', '#fd79a8', '#00b894', '#e17055', '#00cec9', '#a29bfe', '#fd79a8', '#fdcb6e', '#e84393'];
+    const shapes = ['rect', 'circle', 'triangle'];
+    
+    // 大量のコンフェッティを作成（150個）
+    for(let i = 0; i < 150; i++){
+      const confetti = document.createElement('div');
+      const shape = shapes[Math.floor(Math.random() * shapes.length)];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      
+      confetti.className = `confetti ${shape}`;
+      confetti.style.left = Math.random() * 100 + 'vw';
+      confetti.style.top = '-50px';
+      confetti.style.animationDelay = Math.random() * 2 + 's';
+      confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
+      
+      if(shape === 'triangle'){
+        confetti.style.borderBottomColor = color;
+      } else {
+        confetti.style.backgroundColor = color;
+      }
+      
+      // ランダムなサイズ
+      const scale = Math.random() * 0.8 + 0.5;
+      confetti.style.transform = `scale(${scale})`;
+      
+      confettiContainer.appendChild(confetti);
+    }
+    
+    // さらに大きな特別なパーティクルを追加
+    for(let i = 0; i < 30; i++){
+      const bigConfetti = document.createElement('div');
+      bigConfetti.className = 'confetti rect';
+      bigConfetti.style.left = Math.random() * 100 + 'vw';
+      bigConfetti.style.top = '-30px';
+      bigConfetti.style.width = (Math.random() * 20 + 15) + 'px';
+      bigConfetti.style.height = (Math.random() * 15 + 10) + 'px';
+      bigConfetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      bigConfetti.style.animationDelay = Math.random() * 1 + 's';
+      bigConfetti.style.animationDuration = (Math.random() * 4 + 3) + 's';
+      confettiContainer.appendChild(bigConfetti);
+    }
+    
+    document.body.appendChild(confettiContainer);
+    
+    // 継続的にコンフェッティを追加（3波）
+    const addMoreConfetti = (delay, amount) => {
+      setTimeout(() => {
+        for(let i = 0; i < amount; i++){
+          const confetti = document.createElement('div');
+          const shape = shapes[Math.floor(Math.random() * shapes.length)];
+          const color = colors[Math.floor(Math.random() * colors.length)];
+          
+          confetti.className = `confetti ${shape}`;
+          confetti.style.left = Math.random() * 100 + 'vw';
+          confetti.style.top = '-50px';
+      confetti.style.top = '-50px';
+          confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+          
+          if(shape === 'triangle'){
+            confetti.style.borderBottomColor = color;
+          } else {
+            confetti.style.backgroundColor = color;
+          }
+          
+          confettiContainer.appendChild(confetti);
+        }
+      }, delay);
+    };
+    
+    addMoreConfetti(1000, 50);  // 1秒後に50個
+    addMoreConfetti(2000, 30);  // 2秒後に30個
+    addMoreConfetti(3000, 20);  // 3秒後に20個
+    
+    setTimeout(() => {
+      document.body.removeChild(confettiContainer);
+    }, 8000);  // 8秒間表示
+  }
+
+  function startContinuousConfetti(){
+    // 既存の紙吹雪を停止
+    stopConfetti();
+    
+    // コンテナを作成
+    confettiContainer = document.createElement('div');
+    confettiContainer.style.position = 'fixed';
+    confettiContainer.style.top = '0';
+    confettiContainer.style.left = '0';
+    confettiContainer.style.width = '100vw';
+    confettiContainer.style.height = '100vh';
+    confettiContainer.style.pointerEvents = 'none';
+    confettiContainer.style.zIndex = '1500';
+    document.body.appendChild(confettiContainer);
+    
+    const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#f0932b', '#eb4d4b', '#6c5ce7', '#fd79a8', '#00b894', '#e17055', '#00cec9', '#a29bfe', '#fd79a8', '#fdcb6e', '#e84393'];
+    const shapes = ['rect', 'circle', 'triangle'];
+    
+    // 初回の適度な投下（ロースペック考慮）
+    createConfettiBatch(40, colors, shapes);
+    
+    // 継続的に少量ずつ追加（頻度を下げる）
+    confettiInterval = setInterval(() => {
+      createConfettiBatch(6, colors, shapes);
+    }, 1200);
+  }
+  
+  function createConfettiBatch(count, colors, shapes){
+    if(!confettiContainer) return;
+    
+    for(let i = 0; i < count; i++){
+      const confetti = document.createElement('div');
+      const shape = shapes[Math.floor(Math.random() * shapes.length)];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      
+      confetti.className = `confetti ${shape}`;
+      confetti.style.left = Math.random() * 100 + 'vw';
+      confetti.style.top = '-50px';
+      confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
+      
+      if(shape === 'triangle'){
+        confetti.style.borderBottomColor = color;
+      } else {
+        confetti.style.backgroundColor = color;
+      }
+      
+      // ランダムなサイズ
+      const scale = Math.random() * 0.8 + 0.5;
+      confetti.style.transform = `scale(${scale})`;
+      
+      confettiContainer.appendChild(confetti);
+      
+      // アニメーション終了後に要素を削除（短縮）
+      setTimeout(() => {
+        if(confetti && confetti.parentNode){
+          confetti.parentNode.removeChild(confetti);
+        }
+      }, 4000);
+    }
+  }
+  
+  function stopConfetti(){
+    // インターバルを停止
+    if(confettiInterval){
+      clearInterval(confettiInterval);
+      confettiInterval = null;
+    }
+    
+    // コンテナを削除
+    if(confettiContainer && confettiContainer.parentNode){
+      confettiContainer.parentNode.removeChild(confettiContainer);
+      confettiContainer = null;
+    }
+  }
+
+  function csvq(s){ return '"'+String(s).replace(/"/g,'""')+'"'; }
+  async function doCopy(text, okMsg){
+    console.log('コピーするテキスト:', text);
+    try{
+      await navigator.clipboard.writeText(text);
+      console.log('Clipboard API成功');
+      toast(okMsg);
+    }catch (e){
+      console.log('Clipboard API失敗、フォールバック使用:', e);
+      // フォールバック: 一時的な非表示テキストエリアを作成
+      const tempTextArea = document.createElement('textarea');
+      tempTextArea.value = text;
+      tempTextArea.style.position = 'fixed';
+      tempTextArea.style.left = '-999999px';
+      tempTextArea.style.top = '-999999px';
+      document.body.appendChild(tempTextArea);
+      tempTextArea.focus();
+      tempTextArea.select();
+      // 新しいAPIでコピーを試行
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(() => {
+          toast(okMsg);
+        }).catch(() => {
+          // フォールバックで古い方法
+          document.execCommand('copy');
+          toast(okMsg);
+        });
+        document.body.removeChild(tempTextArea);
+        return;
+      }
+      // 古いブラウザ用フォールバック
+      try {
+        document.execCommand('copy');
+        toast(okMsg);
+      } catch(e) {
+        toast('コピーに失敗しました');
+      }
+      document.body.removeChild(tempTextArea);
+    }
+  }
+
+  function toast(msg){
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.position='fixed';t.style.right='16px';t.style.bottom='16px';
+    t.style.padding='10px 14px';t.style.border='1px solid var(--border)';t.style.background='var(--panel-soft)';t.style.borderRadius='10px';
+    t.style.boxShadow='var(--shadow)';t.style.opacity='0';t.style.transition='all .25s ease';
+    document.body.appendChild(t);
+    requestAnimationFrame(()=>{t.style.opacity='1';t.style.transform='translateY(-4px)'});
+    setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(0)';setTimeout(()=>t.remove(),250);},1200);
+  }
+
+  function applyTheme(theme){
+    document.documentElement.setAttribute('data-theme', theme);
+    btnTheme.textContent = theme === 'light' ? '☀️ ライト' : '🌙 ダーク';
+    localStorage.setItem('lottery_theme', theme);
+  }
+  function initTheme(){
+    const saved = localStorage.getItem('lottery_theme');
+    const theme = saved || 'light';
+    applyTheme(theme);
+  }
+  btnTheme.addEventListener('click', ()=>{
+    const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+    applyTheme(cur === 'dark' ? 'light' : 'dark');
+  });
+
+  $("btnPreview").onclick = preview;
+  $("btnDraw").onclick = draw;
+  
+  // Modal events
+  closeResults.onclick = hideResultsModal;
+  resultsOverlay.onclick = hideResultsModal;
+
+  // Save & Reset events
+  btnSave.onclick = saveData;
+  btnReset.onclick = resetData;
+  
+  // Product management
+  btnAddProduct.onclick = addProduct;
+  
+  function addProduct(){
+    const productHtml = `
+      <div class="product-item" data-index="${productIndex}">
+        <div class="form-row">
+          <span class="pill">商品名 <input type="text" class="product-name" value="" placeholder="空欄で自動設定"></span>
+          <span class="pill">当選人数 <input type="number" class="product-winners" value="1" min="1"></span>
+          <button type="button" class="btn ghost remove-product" onclick="removeProduct(${productIndex})">削除</button>
+        </div>
+      </div>
+    `;
+    productsContainer.insertAdjacentHTML('beforeend', productHtml);
+    productIndex++;
+    updateRemoveButtons();
+  }
+  
+  window.removeProduct = function(index){
+    const item = document.querySelector(`[data-index="${index}"]`);
+    if(item) item.remove();
+    updateRemoveButtons();
+  }
+  
+  function updateRemoveButtons(){
+    const items = document.querySelectorAll('.product-item');
+    items.forEach((item, idx) => {
+      const removeBtn = item.querySelector('.remove-product');
+      removeBtn.style.display = items.length > 1 ? 'inline-block' : 'none';
+    });
+  }
+
+  function saveData(){
+    const products = [];
+    document.querySelectorAll('.product-item').forEach(item => {
+      const rawName = item.querySelector('.product-name').value;
+      const cleanName = rawName
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // 制御文字除去
+        .trim()
+        .slice(0, 50);
+      products.push({
+        name: cleanName,
+        winners: Math.max(1, parseInt(item.querySelector('.product-winners').value) || 1)
+      });
+    });
+    
+    const data = {
+      listA: listA.value,
+      listB: listB.value,
+      listC: listC.value,
+      exclude: exclude.value,
+      pointsA: pointsA.value,
+      pointsB: pointsB.value,
+      pointsC: pointsC.value,
+      uniquePerList: uniquePerList.checked,
+      minPoints: minPoints.value,
+      products: products
+    };
+    
+    try {
+      localStorage.setItem('lottery_data', JSON.stringify(data));
+      toast('💾 データを保存しました');
+    } catch (e) {
+      toast('❌ 保存に失敗しました');
+    }
+  }
+
+  function resetData(){
+    if(!confirm('すべてのデータを初期状態に戻しますか？')){
+      return;
+    }
+    
+    // フォームをリセット
+    listA.value = '';
+    listB.value = '';
+    listC.value = '';
+    exclude.value = '';
+    pointsA.value = '1';
+    pointsB.value = '1';
+    pointsC.value = '1';
+    uniquePerList.checked = true;
+    minPoints.value = '1';
+    
+    // 商品をリセット
+    productsContainer.innerHTML = `
+      <div class="product-item" data-index="0">
+        <div class="form-row">
+          <span class="pill">商品名 <input type="text" class="product-name" value="" placeholder="空欄で自動設定"></span>
+          <span class="pill">当選人数 <input type="number" class="product-winners" value="1" min="1"></span>
+          <button type="button" class="btn ghost remove-product" style="display:none;">削除</button>
+        </div>
+      </div>
+    `;
+    productIndex = 1;
+    
+    // 保存データも削除
+    localStorage.removeItem('lottery_data');
+    
+    // 結果をクリア
+    lastWinners = [];
+    pool.clear();
+    
+    // テーブルと統計を更新
+    renderTable();
+    hideResultsModal();
+    
+    toast('🔄 リセット完了');
+  }
+
+  function loadData(){
+    try {
+      const saved = localStorage.getItem('lottery_data');
+      if(saved){
+        const data = JSON.parse(saved);
+        listA.value = data.listA || '';
+        listB.value = data.listB || '';
+        listC.value = data.listC || '';
+        exclude.value = data.exclude || '';
+        pointsA.value = data.pointsA || '1';
+        pointsB.value = data.pointsB || '1';
+        pointsC.value = data.pointsC || '1';
+        uniquePerList.checked = data.uniquePerList !== false;
+        minPoints.value = data.minPoints || '1';
+        
+        // 商品データを復元
+        if(data.products && data.products.length > 0){
+          productsContainer.innerHTML = '';
+          data.products.forEach((product, index) => {
+            const productHtml = `
+              <div class="product-item" data-index="${index}">
+                <div class="form-row">
+                  <span class="pill">商品名 <input type="text" class="product-name" value="${product.name || ''}" placeholder="空欄で自動設定"></span>
+                  <span class="pill">当選人数 <input type="number" class="product-winners" value="${product.winners || 1}" min="1"></span>
+                  <button type="button" class="btn ghost remove-product" onclick="removeProduct(${index})" style="display:${data.products.length > 1 ? 'inline-block' : 'none'}">削除</button>
+                </div>
+              </div>
+            `;
+            productsContainer.insertAdjacentHTML('beforeend', productHtml);
+          });
+          productIndex = data.products.length;
+        }
+        toast('📂 保存データを読み込みました');
+      }
+    } catch (e) {
+      console.log('保存データの読み込みに失敗:', e);
+    }
+  }
+
+  // ヘルプ機能（DOM読み込み後に初期化）
+  setTimeout(() => {
+    const helpToggle = document.querySelector('.help-toggle');
+    const helpOverlay = document.getElementById('helpOverlay');
+    
+    window.toggleHelp = function(){
+      helpOverlay.classList.toggle('show');
+    }
+    
+    if(helpToggle) helpToggle.onclick = toggleHelp;
+    if(helpOverlay) {
+      helpOverlay.onclick = (e) => {
+        if(e.target === helpOverlay) toggleHelp();
+      };
+    }
+    
+    // ESCキーでヘルプを閉じる
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if(helpOverlay && helpOverlay.classList.contains('show')){
+          toggleHelp();
+        } else {
+          hideResultsModal();
+        }
+      }
+    });
+  }, 100);
+
+  initTheme();
+  loadData();  // 起動時にデータを読み込み
+})();
+</script>
+
+<!-- ヘルプボタン -->
+<button class="help-toggle" title="使い方を表示">?</button>
+
+<!-- ヘルプオーバーレイ -->
+<div class="help-overlay" id="helpOverlay">
+  <div class="help-content">
+    <button class="help-close" onclick="toggleHelp()">&times;</button>
+    <div class="help-title">📖 使い方ガイド</div>
+    <div class="help-step"><strong>1. リスト入力:</strong> A/B/Cに参加者名を1行ずつ入力</div>
+    <div class="help-step"><strong>2. ポイント設定:</strong> 各リストの当選確率を調整</div>
+    <div class="help-step"><strong>3. 除外設定:</strong> 対象外の人がいれば除外リストに入力</div>
+    <div class="help-step"><strong>4. 商品設定:</strong> 商品名と当選人数を設定</div>
+    <div class="help-step"><strong>5. 抽選実行:</strong> 「抽選する」ボタンで抽選開始</div>
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);color:var(--muted);font-size:13px">
+      <div class="help-step"><strong>確率計算:</strong> 「確率を計算」で参加者と確率を表示</div>
+      <div class="help-step"><strong>保存機能:</strong> 設定を保存して次回も使用可能</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
