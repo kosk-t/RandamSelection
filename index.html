@@ -15,6 +15,8 @@
     header.appbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
     header .title{font-size:clamp(22px,4vw,32px);font-weight:800;letter-spacing:.2px}
     .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+    .mobile-actions{position:relative;display:none}
+    .more-btn{display:none}
     .btn{position:relative;cursor:pointer;border:none;border-radius:16px;padding:12px 20px;font-weight:600;transition:all 0.2s cubic-bezier(0.4,0,0.2,1);font-size:14px;letter-spacing:0.025em;min-height:44px;display:flex;align-items:center;justify-content:center}
     @media (max-width:480px){.btn{padding:14px 18px;font-size:16px;min-height:48px}}
     .btn.primary{color:white;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 12px 32px rgba(0,212,170,.25);transform:translateY(0)}
@@ -22,6 +24,12 @@
     .btn.ghost{color:var(--text);background:transparent;border:1px solid var(--border)}
     .btn:hover{transform:translateY(-2px);box-shadow:0 16px 40px rgba(0,212,170,.35)}
     .btn:active{transform:translateY(0);box-shadow:0 8px 24px rgba(0,212,170,.25)}
+
+    /* モバイルメニュー */
+    .menu-dropdown{position:absolute;right:0;top:calc(100% + 8px);background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);padding:8px;min-width:160px;display:flex;flex-direction:column;gap:6px;z-index:1200}
+    .menu-item{appearance:none;border:none;background:transparent;color:var(--text);text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:14px}
+    .menu-item:hover{background:var(--panel-soft)}
+    .menu-divider{height:1px;background:var(--border);margin:4px 0}
     .card{background:linear-gradient(180deg,var(--panel),var(--panel-soft));padding:24px;border-radius:20px;margin-bottom:24px;border:1px solid var(--border);box-shadow:var(--shadow);backdrop-filter:blur(12px);transition:box-shadow 0.2s ease,border-color 0.2s ease}
     .card:hover{box-shadow:0 20px 50px rgba(0,0,0,.3);border-color:rgba(255,255,255,.3)}
     .card h3{margin:0 0 10px}
@@ -30,6 +38,9 @@
     .chip{display:inline-block;font-size:11px;padding:3px 10px;border-radius:999px;border:1px solid #ffd8d8;color:#4b1014;background:#ffd8d8;mix-blend:screen}
     textarea{width:100%;height:120px;resize:vertical;background:var(--input-bg);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px;font-family:ui-monospace,Consolas,monospace;font-size:14px}
     @media (max-width:480px){
+      .toolbar{display:none}
+      .mobile-actions{display:block}
+      .more-btn{display:inline-flex}
       textarea{height:100px;font-size:16px;padding:12px}
     }
     .form-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
@@ -162,6 +173,15 @@
         <button id="btnSave" class="btn secondary" title="現在の設定を保存">💾 保存</button>
         <button id="btnReset" class="btn ghost" title="すべてを初期状態に戻す">🔄 リセット</button>
         <button id="btnTheme" class="btn ghost" aria-label="テーマ切り替え">🌙 ダーク</button>
+      </div>
+      <div class="mobile-actions">
+        <button id="btnMenu" class="btn secondary more-btn" aria-haspopup="true" aria-expanded="false" aria-label="メニュー">☰</button>
+        <div id="menuDropdown" class="menu-dropdown" hidden>
+          <button class="menu-item" data-action="save">💾 保存</button>
+          <button class="menu-item" data-action="reset">🔄 リセット</button>
+          <div class="menu-divider"></div>
+          <button class="menu-item" data-action="theme" id="menuTheme">🌓 テーマ切替</button>
+        </div>
       </div>
     </header>
 
@@ -782,6 +802,56 @@
   
   // Product management
   btnAddProduct.onclick = addProduct;
+
+  // Mobile menu
+  const btnMenu = document.getElementById('btnMenu');
+  const menuDropdown = document.getElementById('menuDropdown');
+  const menuTheme = document.getElementById('menuTheme');
+  
+  function updateMenuThemeText(){
+    const theme = document.documentElement.getAttribute('data-theme') || 'light';
+    menuTheme.textContent = theme === 'light' ? '🌙 ダークに切替' : '☀️ ライトに切替';
+  }
+  
+  function openMenu(){
+    if(!menuDropdown) return;
+    menuDropdown.hidden = false;
+    btnMenu.setAttribute('aria-expanded', 'true');
+    updateMenuThemeText();
+    // クリック外しで閉じる
+    setTimeout(() => {
+      document.addEventListener('click', onDocClick);
+    }, 0);
+  }
+  function closeMenu(){
+    if(!menuDropdown) return;
+    menuDropdown.hidden = true;
+    btnMenu.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('click', onDocClick);
+  }
+  function toggleMenu(){
+    if(menuDropdown.hidden){ openMenu(); } else { closeMenu(); }
+  }
+  function onDocClick(e){
+    if(!menuDropdown.contains(e.target) && e.target !== btnMenu){
+      closeMenu();
+    }
+  }
+  if(btnMenu){ btnMenu.addEventListener('click', (e)=>{ e.stopPropagation(); toggleMenu(); }); }
+  if(menuDropdown){
+    menuDropdown.addEventListener('click', (e)=>{
+      const t = e.target.closest('.menu-item');
+      if(!t) return;
+      const action = t.getAttribute('data-action');
+      if(action === 'save') saveData();
+      if(action === 'reset') resetData();
+      if(action === 'theme'){
+        const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+        applyTheme(cur === 'dark' ? 'light' : 'dark');
+      }
+      closeMenu();
+    });
+  }
   
   function addProduct(){
     const productHtml = `
