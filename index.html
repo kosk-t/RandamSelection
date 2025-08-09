@@ -65,22 +65,14 @@
     .results-header{display:flex;justify-content:center;align-items:center;margin-bottom:24px}
     .close-btn{position:absolute;top:16px;right:16px;width:32px;height:32px;border:none;background:rgba(255,255,255,.1);color:white;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all 0.2s ease}
     .close-btn:hover{background:rgba(255,255,255,.2);transform:scale(1.1)}
-    .copy-actions{position:absolute;top:16px;right:56px;display:flex;gap:8px;opacity:1;transition:opacity 0.2s ease;flex-direction:column;align-items:flex-end}
-    @media (hover:hover){
-      .copy-actions{opacity:0}
-      .results:hover .copy-actions{opacity:1}
-    }
-    .copy-btn{position:relative;height:32px;min-width:32px;border:none;background:rgba(255,255,255,.08);color:white;border-radius:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);border:1px solid rgba(255,255,255,.1);overflow:hidden;white-space:nowrap}
+    .copy-actions{position:fixed;top:0;left:0;display:flex;gap:8px;opacity:0;visibility:hidden;transition:opacity 0.3s ease,visibility 0.3s ease;flex-direction:column;align-items:flex-end;z-index:1100}
+    .copy-actions.show{opacity:1;visibility:visible}
+
+    .copy-btn{position:relative;height:48px;min-width:48px;border:none;background:rgba(0,212,170,.9);color:white;border-radius:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);border:1px solid rgba(255,255,255,.2);overflow:hidden;white-space:nowrap;box-shadow:0 4px 16px rgba(0,212,170,.3);backdrop-filter:blur(10px)}
     .copy-btn .btn-text{max-width:0;opacity:0;margin-left:0;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);font-size:11px;font-weight:500}
-    @media (hover:hover){
-      .results:hover .copy-btn{background:rgba(255,255,255,.12);min-width:120px}
-      .results:hover .copy-btn .btn-text{max-width:80px;opacity:1;margin-left:6px}
-    }
-    @media (hover:none){
-      .copy-btn{background:rgba(255,255,255,.12);min-width:120px}
-      .copy-btn .btn-text{max-width:80px;opacity:1;margin-left:6px}
-    }
-    .copy-btn:hover{background:rgba(255,255,255,.2);transform:scale(1.02)}
+    .copy-actions.show .copy-btn{background:rgba(0,212,170,.9);min-width:140px}
+    .copy-actions.show .copy-btn .btn-text{max-width:90px;opacity:1;margin-left:8px}
+    .copy-btn:hover{background:rgba(0,212,170,1);transform:scale(1.05);box-shadow:0 6px 20px rgba(0,212,170,.4)}
     
     
     /* ヒント表示システム */
@@ -123,7 +115,6 @@
       .results-title{font-size:20px}
       .badge{font-size:16px;padding:12px 18px;min-height:44px;display:flex;align-items:center;justify-content:center}
       .close-btn{width:44px;height:44px;font-size:20px;top:12px;right:12px}
-      .copy-actions{top:12px;right:64px;opacity:1}
       .copy-btn{min-height:44px;font-size:13px}
       .toolbar{justify-content:center;gap:12px}
       .wrap{position:relative}
@@ -241,18 +232,20 @@
     <div class="results-header">
       <div class="results-title" id="resultsTitle">🎉 当選 0 名</div>
     </div>
-    <div class="copy-actions">
-      <button id="btnCopyNames" class="copy-btn">
-        📋
-        <span class="btn-text">名前をコピー</span>
-      </button>
-      <button id="btnCopyCSV" class="copy-btn">
-        📊
-        <span class="btn-text">CSVをコピー</span>
-      </button>
-    </div>
     <div class="result-badges" id="winnersBadges"></div>
     </div>
+  </div>
+
+  <!-- Copy Actions (outside modal) -->
+  <div class="copy-actions">
+    <button id="btnCopyNames" class="copy-btn">
+      📋
+      <span class="btn-text">名前をコピー</span>
+    </button>
+    <button id="btnCopyCSV" class="copy-btn">
+      📊
+      <span class="btn-text">CSVをコピー</span>
+    </button>
   </div>
 
 <script>
@@ -467,16 +460,24 @@
     resultsPanel.classList.add('show');
     document.body.style.overflow = 'hidden';
     
-    // 初回ヒント表示
-    setTimeout(() => {
-      copyHint.classList.add('show-hint');
-    }, 1000);
+    // コピーボタンを表示
+    const copyActions = document.querySelector('.copy-actions');
+    if(copyActions){
+      copyActions.classList.add('show');
+      // レイアウト後に位置調整
+      positionCopyActions();
+      requestAnimationFrame(positionCopyActions);
+    }
   }
 
   function hideResultsModal(){
     resultsOverlay.classList.remove('show');
     resultsPanel.classList.remove('show');
     document.body.style.overflow = 'auto';
+    
+    // コピーボタンを非表示
+    const copyActions = document.querySelector('.copy-actions');
+    if(copyActions) copyActions.classList.remove('show');
     
     // 紙吹雪を停止
     stopConfetti();
@@ -486,6 +487,8 @@
     // 結果モーダル表示
     showResultsModal();
     updateResults();
+    // 内容確定後に再度位置調整
+    setTimeout(positionCopyActions, 0);
     
     // 当選者がいる場合の演出
     if(lastWinners.length > 0){
@@ -496,6 +499,44 @@
     resultsPanel.classList.add('success-pulse');
     setTimeout(() => resultsPanel.classList.remove('success-pulse'), 800);
   }
+  
+  // モーダルの近くにコピーボタンを配置（はみ出し回避）
+  function positionCopyActions(){
+    const actions = document.querySelector('.copy-actions');
+    if(!actions || !actions.classList.contains('show')) return;
+    const panelRect = resultsPanel.getBoundingClientRect();
+    const actionsRect = actions.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const s = 16; // 余白
+
+    let left = panelRect.right + s;
+    let top = panelRect.top + (panelRect.height - actionsRect.height) / 2;
+
+    // 右側がはみ出す場合は左側へ
+    if(left + actionsRect.width > vw - s){
+      const leftCandidate = panelRect.left - actionsRect.width - s;
+      if(leftCandidate >= s){
+        left = leftCandidate;
+      } else {
+        // 下側中央に配置（スマホ等で幅が足りない場合）
+        left = panelRect.left + (panelRect.width - actionsRect.width) / 2;
+        top = panelRect.bottom + s;
+      }
+    }
+
+    // ビューポート内に収める
+    left = Math.max(s, Math.min(left, vw - actionsRect.width - s));
+    top  = Math.max(s, Math.min(top,  vh - actionsRect.height - s));
+
+    actions.style.left = Math.round(left) + 'px';
+    actions.style.top  = Math.round(top)  + 'px';
+  }
+
+  // リサイズ時にも追従
+  window.addEventListener('resize', () => {
+    positionCopyActions();
+  });
   
 
   function createSuperConfetti(){
