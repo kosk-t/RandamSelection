@@ -186,26 +186,30 @@
       </div>
     </header>
 
-    <div class="grid-2">
-      <div class="card">
-        <h3>リスト A</h3>
-        <textarea id="listA" placeholder="1行に1名を貼り付け"></textarea>
-        <div class="form-row"><span class="pill">ポイント <input id="pointsA" type="number" value="1" step="0.1" min="0"></span></div>
-      </div>
-      <div class="card">
-        <h3>リスト B</h3>
-        <textarea id="listB" placeholder="1行に1名を貼り付け"></textarea>
-        <div class="form-row"><span class="pill">ポイント <input id="pointsB" type="number" value="1" step="0.1" min="0"></span></div>
-      </div>
+    <div class="card" id="cardA">
+      <h3>リスト A</h3>
+      <textarea id="listA" placeholder="1行に1名を貼り付け"></textarea>
+      <div class="form-row"><span class="pill">ポイント <input id="pointsA" type="number" value="1" step="0.1" min="0"></span></div>
     </div>
 
-    <div class="grid-2">
-      <div class="card">
-        <h3>リスト C</h3>
-        <textarea id="listC" placeholder="1行に1名を貼り付け"></textarea>
-        <div class="form-row"><span class="pill">ポイント <input id="pointsC" type="number" value="1" step="0.1" min="0"></span></div>
+    <div class="form-row" style="margin:8px 0 16px;">
+      <button id="toggleAdvanced" class="btn ghost">＋ 追加のリスト/除外を表示</button>
+    </div>
+
+    <div id="advancedSection" hidden>
+      <div class="grid-2">
+        <div class="card" id="cardB">
+          <h3>リスト B</h3>
+          <textarea id="listB" placeholder="1行に1名を貼り付け"></textarea>
+          <div class="form-row"><span class="pill">ポイント <input id="pointsB" type="number" value="1" step="0.1" min="0"></span></div>
+        </div>
+        <div class="card" id="cardC">
+          <h3>リスト C</h3>
+          <textarea id="listC" placeholder="1行に1名を貼り付け"></textarea>
+          <div class="form-row"><span class="pill">ポイント <input id="pointsC" type="number" value="1" step="0.1" min="0"></span></div>
+        </div>
       </div>
-      <div class="card exclude">
+      <div class="card exclude" id="cardExclude">
         <h3>除外リスト <span class="chip">EXCLUDE</span></h3>
         <textarea id="exclude" placeholder="対象外の名前（1行に1名）"></textarea>
       </div>
@@ -804,6 +808,21 @@
   // Product management
   btnAddProduct.onclick = addProduct;
 
+  // Advanced section toggle
+  const advancedSection = document.getElementById('advancedSection');
+  const toggleAdvancedBtn = document.getElementById('toggleAdvanced');
+  function setAdvancedOpen(open){
+    if(!advancedSection || !toggleAdvancedBtn) return;
+    advancedSection.hidden = !open;
+    toggleAdvancedBtn.textContent = open ? '− 追加のリスト/除外を隠す' : '＋ 追加のリスト/除外を表示';
+    localStorage.setItem('lottery_adv_open', open ? '1' : '0');
+  }
+  if(toggleAdvancedBtn){
+    toggleAdvancedBtn.addEventListener('click', ()=>{
+      setAdvancedOpen(advancedSection.hidden);
+    });
+  }
+
   // Mobile menu
   const btnMenu = document.getElementById('btnMenu');
   const menuDropdown = document.getElementById('menuDropdown');
@@ -997,6 +1016,12 @@
     } catch (e) {
       console.log('保存データの読み込みに失敗:', e);
     }
+    // 追加セクションの初期開閉
+    try {
+      const savedOpen = localStorage.getItem('lottery_adv_open');
+      const hasExtras = (document.getElementById('listB').value.trim() || document.getElementById('listC').value.trim() || document.getElementById('exclude').value.trim());
+      setAdvancedOpen(savedOpen ? savedOpen === '1' : !!hasExtras);
+    } catch(e) {}
   }
 
   // ヘルプ機能（DOM読み込み後に初期化）
@@ -1040,14 +1065,13 @@
   <div class="help-content">
     <button class="help-close" onclick="toggleHelp()">&times;</button>
     <div class="help-title">📖 使い方ガイド</div>
-    <div class="help-step"><strong>1. リスト入力:</strong> A/B/Cに参加者名を1行ずつ入力</div>
-    <div class="help-step"><strong>2. ポイント設定:</strong> 各リストの当選確率を調整</div>
-    <div class="help-step"><strong>3. 除外設定:</strong> 対象外の人がいれば除外リストに入力</div>
-    <div class="help-step"><strong>4. 商品設定:</strong> 商品名と当選人数を設定</div>
-    <div class="help-step"><strong>5. 抽選実行:</strong> 「抽選する」ボタンで抽選開始</div>
+    <div class="help-step"><strong>1. リスト入力:</strong> まずはリストAに参加者名を1行ずつ入力。リストB/Cにも同一参加者名を追加で当選確率アップ。除外も設定可能。B/Cや除外は「＋ 追加のリスト/除外を表示」で開けます。</div>
+    <div class="help-step"><strong>2. 商品設定:</strong> 商品名と当選人数を設定。「+ 商品を追加」で複数商品に対応。</div>
+    <div class="help-step"><strong>3. 抽選実行:</strong> 「抽選する」で開始。結果モーダル隣のボタンから「名前/CSV」をコピーできます。</div>
     <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);color:var(--muted);font-size:13px">
-      <div class="help-step"><strong>確率計算:</strong> 「確率を計算」で参加者と確率を表示</div>
-      <div class="help-step"><strong>保存機能:</strong> 設定を保存して次回も使用可能</div>
+      <div class="help-step"><strong>ポイント設定:</strong> 各リストのポイントを入力して当選しやすさを調整。</div>
+      <div class="help-step"><strong>確率確認:</strong> 「確率を計算」で候補者と当選確率を確認。</div>
+      <div class="help-step"><strong>保存/リセット/テーマ:</strong> 右上から操作。保存した内容は次回読み込み。</div>
     </div>
   </div>
 </div>
