@@ -25,6 +25,8 @@
     .btn:hover{transform:translateY(-2px);box-shadow:0 16px 40px rgba(0,212,170,.35)}
     .btn:active{transform:translateY(0);box-shadow:0 8px 24px rgba(0,212,170,.25)}
     .btn.sm{padding:8px 12px;min-height:36px;font-size:12px}
+  .btn.saving{animation:flash 0.5s ease-in-out}
+  @keyframes flash{0%,100%{filter:none}50%{filter:brightness(1.8)}}
 
     /* モバイルメニュー */
     .menu-dropdown{position:absolute;right:0;top:calc(100% + 8px);background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);padding:8px;min-width:160px;display:flex;flex-direction:column;gap:6px;z-index:1200}
@@ -37,7 +39,7 @@
     .card h3{margin:0 0 10px}
     .card.exclude{background:linear-gradient(180deg,var(--panel-exclude),#ffb3b3);border-color:#ff8b8b66}
     .card.exclude h3{display:flex;align-items:center;gap:8px}
-    .chip{display:inline-block;font-size:11px;padding:3px 10px;border-radius:999px;border:1px solid #ffd8d8;color:#4b1014;background:#ffd8d8;mix-blend:screen}
+  .chip{display:inline-block;font-size:11px;padding:3px 10px;border-radius:999px;border:1px solid #ffd8d8;color:#4b1014;background:#ffd8d8;mix-blend-mode:screen}
     textarea{width:100%;height:120px;resize:vertical;background:var(--input-bg);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px;font-family:ui-monospace,Consolas,monospace;font-size:14px}
     @media (max-width:480px){
       .toolbar{display:none}
@@ -78,7 +80,7 @@
     .results-header{display:flex;justify-content:center;align-items:center;margin-bottom:24px}
     .close-btn{position:absolute;top:16px;right:16px;width:32px;height:32px;border:none;background:rgba(255,255,255,.1);color:white;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all 0.2s ease}
     .close-btn:hover{background:rgba(255,255,255,.2);transform:scale(1.1)}
-    .copy-actions{position:fixed;top:0;left:0;display:flex;gap:8px;opacity:0;visibility:hidden;transition:opacity 0.3s ease,visibility 0.3s ease;flex-direction:column;align-items:flex-end;z-index:1100}
+  .copy-actions{position:fixed;top:0;left:0;display:flex;gap:12px;opacity:0;visibility:hidden;transition:opacity 0.3s ease,visibility 0.3s ease;flex-direction:row;align-items:center;z-index:1100}
     .copy-actions.show{opacity:1;visibility:visible}
 
     .copy-btn{position:relative;height:48px;min-width:48px;border:none;background:rgba(0,212,170,.9);color:white;border-radius:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);border:1px solid rgba(255,255,255,.2);overflow:hidden;white-space:nowrap;box-shadow:0 4px 16px rgba(0,212,170,.3);backdrop-filter:blur(10px)}
@@ -86,6 +88,18 @@
     .copy-actions.show .copy-btn{background:rgba(0,212,170,.9);min-width:140px}
     .copy-actions.show .copy-btn .btn-text{max-width:90px;opacity:1;margin-left:8px}
     .copy-btn:hover{background:rgba(0,212,170,1);transform:scale(1.05);box-shadow:0 6px 20px rgba(0,212,170,.4)}
+
+    /* モバイル時はコピーボタンをボトム固定に配置 */
+    @media (max-width:600px){
+      .copy-actions.bottom{left:0;right:0;top:auto;bottom:calc(env(safe-area-inset-bottom, 0px) + 12px);flex-direction:row;align-items:center;justify-content:center;padding:0 12px;gap:10px}
+      .copy-actions.bottom .copy-btn{flex:1;min-width:0;height:52px}
+      .copy-actions.bottom .btn-text{max-width:120px;opacity:1;margin-left:8px}
+    }
+
+    /* デスクトップ時にモーダル直下配置用の横並びスタイル */
+    @media (min-width:601px){
+      .copy-actions.below{flex-direction:row;align-items:center;justify-content:center}
+    }
     
     
     /* ヒント表示システム */
@@ -520,43 +534,33 @@
     resultsOverlay.classList.add('show');
     resultsPanel.classList.add('show');
     document.body.style.overflow = 'hidden';
-    
-    // コピーボタンを表示
+    // コピーボタン表示 & 初期配置
     const copyActions = document.querySelector('.copy-actions');
     if(copyActions){
       copyActions.classList.add('show');
-      // レイアウト後に位置調整
       positionCopyActions();
       requestAnimationFrame(positionCopyActions);
     }
-
-    // サイズ変化を監視して位置を追従（当選者が複数行になった場合など）
+    // リサイズ監視（バッジ増減で高さ変化）
     if(window.ResizeObserver && !resultsResizeObserver){
-      resultsResizeObserver = new ResizeObserver(() => {
-        positionCopyActions();
-      });
+      resultsResizeObserver = new ResizeObserver(() => positionCopyActions());
       resultsResizeObserver.observe(resultsPanel);
       const badges = document.getElementById('winnersBadges');
       if(badges) resultsResizeObserver.observe(badges);
     }
   }
 
+  // モーダルを閉じる（以前の実装が削除され参照エラーになっていたため再追加）
   function hideResultsModal(){
     resultsOverlay.classList.remove('show');
     resultsPanel.classList.remove('show');
     document.body.style.overflow = 'auto';
-    
-    // コピーボタンを非表示
     const copyActions = document.querySelector('.copy-actions');
     if(copyActions) copyActions.classList.remove('show');
-    
-    // オブザーバ解除
     if(resultsResizeObserver){
       try{ resultsResizeObserver.disconnect(); }catch(e){}
       resultsResizeObserver = null;
     }
-    
-    // 紙吹雪を停止
     stopConfetti();
   }
 
@@ -587,19 +591,13 @@
     const vh = window.innerHeight;
     const s = 16; // 余白
 
-    let left = panelRect.right + s;
-    let top = panelRect.top + (panelRect.height - actionsRect.height) / 2;
+    // デスクトップ: モーダル直下に中央配置
+    let left = panelRect.left + (panelRect.width - actionsRect.width) / 2;
+    let top = panelRect.bottom + s;
 
-    // 右側がはみ出す場合は左側へ
-    if(left + actionsRect.width > vw - s){
-      const leftCandidate = panelRect.left - actionsRect.width - s;
-      if(leftCandidate >= s){
-        left = leftCandidate;
-      } else {
-        // 下側中央に配置（スマホ等で幅が足りない場合）
-        left = panelRect.left + (panelRect.width - actionsRect.width) / 2;
-        top = panelRect.bottom + s;
-      }
+    // 下にはみ出す場合はモーダル上に配置
+    if(top + actionsRect.height > vh - s){
+      top = panelRect.top - actionsRect.height - s;
     }
 
     // ビューポート内に収める
@@ -854,7 +852,21 @@
   resultsOverlay.onclick = hideResultsModal;
 
   // Save & Reset events
-  btnSave.onclick = saveData;
+  if(btnSave){
+    btnSave.addEventListener('click', (e)=>{
+      try {
+        saveData();
+        // 視覚的フィードバック（点滅）
+        btnSave.classList.add('saving');
+        setTimeout(()=> btnSave.classList.remove('saving'), 500);
+      } catch(err){
+        console.error('saveData error', err);
+        toast('❌ 保存エラー (Console参照)');
+      }
+    });
+  } else {
+    console.warn('#btnSave が見つかりません');
+  }
   btnReset.onclick = resetData;
   
   // Product management
@@ -1089,6 +1101,8 @@
   }
 
   function saveData(){
+  // 二重クリック防止
+  if(saveData._busy) return; saveData._busy = true; setTimeout(()=> saveData._busy=false, 300);
     const products = [];
     document.querySelectorAll('.product-item').forEach(item => {
       const rawName = item.querySelector('.product-name').value;
