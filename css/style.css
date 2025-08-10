@@ -615,3 +615,19 @@ td.mono,th.mono{font-family:ui-monospace,Consolas,monospace}
   50%{transform:scale(1.05)}
   100%{transform:scale(1)}
 }
+
+.hamburger-icon {
+  width: 24px;
+  height: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.hamburger-icon span {
+  display: block;
+  height: 3px;
+  width: 100%;
+  background-color: var(--text);
+  border-radius: 3px;
+}
