@@ -84,6 +84,8 @@
     .copy-actions.show{opacity:1;visibility:visible}
 
     .copy-btn{position:relative;height:48px;min-width:48px;border:none;background:rgba(0,212,170,.9);color:white;border-radius:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);border:1px solid rgba(255,255,255,.2);overflow:hidden;white-space:nowrap;box-shadow:0 4px 16px rgba(0,212,170,.3);backdrop-filter:blur(10px)}
+    .copy-btn.secondary{background:rgba(255,255,255,.08);box-shadow:0 4px 12px rgba(0,0,0,.2)}
+    .copy-actions.below .copy-btn{min-width:160px}
     .copy-btn .btn-text{max-width:0;opacity:0;margin-left:0;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);font-size:11px;font-weight:500}
     .copy-actions.show .copy-btn{background:rgba(0,212,170,.9);min-width:140px}
     .copy-actions.show .copy-btn .btn-text{max-width:90px;opacity:1;margin-left:8px}
@@ -91,7 +93,10 @@
 
     /* モバイル時はコピーボタンをボトム固定に配置 */
     @media (max-width:600px){
-      .copy-actions.bottom{left:0;right:0;top:auto;bottom:calc(env(safe-area-inset-bottom, 0px) + 12px);flex-direction:row;align-items:center;justify-content:center;padding:0 12px;gap:10px}
+      .copy-actions.bottom{position:fixed;left:0;right:0;top:auto;bottom:calc(env(safe-area-inset-bottom, 0px) + 12px);flex-direction:row;align-items:center;justify-content:center;padding-left:calc(env(safe-area-inset-left, 0px) + 12px);padding-right:calc(env(safe-area-inset-right, 0px) + 12px);gap:10px}
+      .copy-actions.bottom{padding-top:8px;padding-bottom:8px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:16px}
+      html[data-theme="light"] .copy-actions.bottom{background:rgba(255,255,255,.8);border:1px solid var(--border);box-shadow:0 8px 24px rgba(15,23,42,.12)}
+      html[data-theme="dark"] .copy-actions.bottom{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.15);box-shadow:0 8px 24px rgba(0,0,0,.35)}
       .copy-actions.bottom .copy-btn{flex:1;min-width:0;height:52px}
       .copy-actions.bottom .btn-text{max-width:120px;opacity:1;margin-left:8px}
     }
@@ -312,11 +317,11 @@
 
   <!-- Copy Actions (outside modal) -->
   <div class="copy-actions">
-    <button id="btnCopyNames" class="copy-btn">
+    <button id="btnCopyNames" class="copy-btn primary">
       📋
       <span class="btn-text">名前をコピー</span>
     </button>
-    <button id="btnCopyCSV" class="copy-btn">
+    <button id="btnCopyCSV" class="copy-btn secondary">
       📊
       <span class="btn-text">CSVをコピー</span>
     </button>
@@ -538,8 +543,12 @@
     const copyActions = document.querySelector('.copy-actions');
     if(copyActions){
       copyActions.classList.add('show');
+      updateCopyActionsMode();
       positionCopyActions();
-      requestAnimationFrame(positionCopyActions);
+      requestAnimationFrame(() => {
+        positionCopyActions();
+        updateCopyActionsViewportOffset();
+      });
     }
     // リサイズ監視（バッジ増減で高さ変化）
     if(window.ResizeObserver && !resultsResizeObserver){
@@ -556,7 +565,10 @@
     resultsPanel.classList.remove('show');
     document.body.style.overflow = 'auto';
     const copyActions = document.querySelector('.copy-actions');
-    if(copyActions) copyActions.classList.remove('show');
+    if(copyActions){
+      copyActions.classList.remove('show');
+      copyActions.style.bottom = '';
+    }
     if(resultsResizeObserver){
       try{ resultsResizeObserver.disconnect(); }catch(e){}
       resultsResizeObserver = null;
@@ -585,6 +597,10 @@
   function positionCopyActions(){
     const actions = document.querySelector('.copy-actions');
     if(!actions || !actions.classList.contains('show')) return;
+    // モバイルはCSSで固定ボトムにする
+    if(window.innerWidth <= 600){
+      return;
+    }
     const panelRect = resultsPanel.getBoundingClientRect();
     const actionsRect = actions.getBoundingClientRect();
     const vw = window.innerWidth;
@@ -610,8 +626,54 @@
 
   // リサイズ時にも追従
   window.addEventListener('resize', () => {
+    updateCopyActionsMode();
     positionCopyActions();
+    updateCopyActionsViewportOffset();
   });
+
+  // 画面幅に応じてコピー操作の配置を切替
+  function updateCopyActionsMode(){
+    const actions = document.querySelector('.copy-actions');
+    if(!actions) return;
+    const small = window.innerWidth <= 600;
+    if(small){
+      actions.classList.add('bottom');
+      actions.classList.remove('below');
+    } else {
+      actions.classList.remove('bottom');
+      actions.classList.add('below');
+    }
+  }
+
+  // モバイルでキーボード出現時にボトムが隠れないよう補正
+  function updateCopyActionsViewportOffset(){
+    const actions = document.querySelector('.copy-actions');
+    if(!actions) return;
+    if(!(window.innerWidth <= 600)){
+      actions.style.bottom = '';
+      return;
+    }
+    try{
+      if(window.visualViewport){
+        const vv = window.visualViewport;
+        const offset = Math.max(0, (window.innerHeight - vv.height - vv.offsetTop));
+        const base = 12; // CSS側のベース余白(px)
+        actions.style.bottom = (offset > 0) ? (base + offset) + 'px' : '';
+      } else {
+        actions.style.bottom = '';
+      }
+    } catch(e) {
+      actions.style.bottom = '';
+    }
+  }
+
+  // iOS等でのソフトキーボード表示に追従
+  try{
+    if(window.visualViewport){
+      visualViewport.addEventListener('resize', updateCopyActionsViewportOffset);
+      visualViewport.addEventListener('scroll', updateCopyActionsViewportOffset);
+    }
+  }catch(e){}
   
 
   function createSuperConfetti(){
