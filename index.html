@@ -39,7 +39,9 @@
     .card h3{margin:0 0 10px}
     .card.exclude{background:linear-gradient(180deg,var(--panel-exclude),#ffb3b3);border-color:#ff8b8b66}
     .card.exclude h3{display:flex;align-items:center;gap:8px}
-  .chip{display:inline-block;font-size:11px;padding:3px 10px;border-radius:999px;border:1px solid #ffd8d8;color:#4b1014;background:#ffd8d8;mix-blend-mode:screen}
+  .chip{display:inline-block;font-size:11px;padding:3px 10px;border-radius:999px;border:1px solid #ffd8d8;color:#4b1014;background:#ffd8d8;mix-blend-mode:screen;font-weight:600}
+  /* ライトテーマではブレンドを無効化してコントラストを確保 */
+  html[data-theme="light"] .chip{background:#ffe1e1;border:1px solid #ffc4c4;color:#7a0e14;mix-blend-mode:normal}
     textarea{width:100%;height:120px;resize:vertical;background:var(--input-bg);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px;font-family:ui-monospace,Consolas,monospace;font-size:14px}
     @media (max-width:480px){
       .toolbar{display:none}
@@ -55,6 +57,9 @@
     .pill{display:inline-flex;gap:10px;align-items:center;background:rgba(255,255,255,.06);border:1px solid var(--border);padding:8px 12px;border-radius:999px;min-height:44px}
     @media (max-width:480px){.pill{padding:12px 16px;min-height:48px}}
     html[data-theme="light"] .pill{background:#fff}
+    /* 2カラムグリッド（B/Cリスト用） */
+    .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+    @media (max-width:768px){.grid-2{grid-template-columns:1fr;gap:12px}}
     input[type=number]{width:110px;min-height:32px;font-size:16px}
     @media (max-width:480px){
       input[type=number]{width:80px;font-size:18px;min-height:36px}
@@ -80,7 +85,9 @@
     .results-header{display:flex;justify-content:center;align-items:center;margin-bottom:24px}
     .close-btn{position:absolute;top:16px;right:16px;width:32px;height:32px;border:none;background:rgba(255,255,255,.1);color:white;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all 0.2s ease}
     .close-btn:hover{background:rgba(255,255,255,.2);transform:scale(1.1)}
-  .copy-actions{position:fixed;top:0;left:0;display:flex;gap:12px;opacity:0;visibility:hidden;transition:opacity 0.3s ease,visibility 0.3s ease;flex-direction:row;align-items:center;z-index:1100}
+  .copy-actions{position:fixed;top:0;left:0;display:flex;gap:16px;opacity:0;visibility:hidden;transition:opacity 0.3s ease,visibility 0.3s ease;flex-direction:row;align-items:center;justify-content:center;z-index:1100;padding:0 12px}
+  /* モバイル: 画面下固定（既存クラス bottom 付与時） */
+  .copy-actions.bottom{left:0 !important;right:0;width:100vw !important;justify-content:center;padding:12px 16px;box-sizing:border-box}
     .copy-actions.show{opacity:1;visibility:visible}
 
     .copy-btn{position:relative;height:48px;min-width:48px;border:none;background:rgba(0,212,170,.9);color:white;border-radius:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);border:1px solid rgba(255,255,255,.2);overflow:hidden;white-space:nowrap;box-shadow:0 4px 16px rgba(0,212,170,.3);backdrop-filter:blur(10px)}
@@ -205,6 +212,11 @@
     /* Success Pulse */
     .success-pulse{animation:success-pulse 0.8s ease-out}
     @keyframes success-pulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
+
+    /* 動きの少ない設定を尊重 */
+    @media (prefers-reduced-motion: reduce){
+      *{animation:none !important;transition:none !important}
+    }
   </style>
 </head>
 <body>
@@ -272,7 +284,6 @@
     <div class="card">
       <h3>抽選設定</h3>
       <div class="form-row">
-        <label class="pill"><input id="uniquePerList" type="checkbox" checked> 同一リスト内の重複行は1件として扱う</label>
         <span class="pill">最小ポイント <input id="minPoints" type="number" value="1" step="0.1" min="0"></span>
       </div>
       
@@ -306,8 +317,8 @@
 
   <!-- Results Modal -->
   <div class="results-overlay" id="resultsOverlay"></div>
-  <div class="results" id="resultsPanel">
-    <button class="close-btn" id="closeResults">×</button>
+  <div class="results" id="resultsPanel" role="dialog" aria-modal="true" aria-labelledby="resultsTitle">
+    <button class="close-btn" id="closeResults" aria-label="閉じる">×</button>
     <div class="results-header">
       <div class="results-title" id="resultsTitle">🎉 当選 0 名</div>
     </div>
@@ -333,7 +344,7 @@
   const listA = $("listA"), listB = $("listB"), listC = $("listC");
   const pointsA = $("pointsA"), pointsB = $("pointsB"), pointsC = $("pointsC");
   const exclude = $("exclude");
-  const uniquePerList = $("uniquePerList"), minPoints = $("minPoints");
+  const minPoints = $("minPoints");
   const productsContainer = $("productsContainer"), btnAddProduct = $("btnAddProduct");
   const statsLeft = $("statsLeft"), statsRight = $("statsRight"), tableWrap = $("tableWrap");
   const resultsPanel = $("resultsPanel"), resultsOverlay = $("resultsOverlay"), winnersBadges = $("winnersBadges"), resultsTitle = $("resultsTitle");
@@ -371,7 +382,7 @@
       for(const raw of rows){
         const key = normalize(raw);
         if(!key || excludes.has(key)) continue;
-        if(uniquePerList.checked && seen.has(key)) continue;
+        if(seen.has(key)) continue;
         seen.add(key);
         const cur = pool.get(key) || { name: raw.trim(), points: 0 };
         cur.points += p;
@@ -550,6 +561,8 @@
         updateCopyActionsViewportOffset();
       });
     }
+    // モーダルにフォーカスを移動（トラップ開始）
+    startModalFocusTrap();
     // リサイズ監視（バッジ増減で高さ変化）
     if(window.ResizeObserver && !resultsResizeObserver){
       resultsResizeObserver = new ResizeObserver(() => positionCopyActions());
@@ -574,6 +587,7 @@
       resultsResizeObserver = null;
     }
     stopConfetti();
+    stopModalFocusTrap();
   }
 
   function showResultsWithAnimation(){
@@ -584,16 +598,18 @@
     setTimeout(positionCopyActions, 0);
     
     // 当選者がいる場合の演出
-    if(lastWinners.length > 0){
+    if(lastWinners.length > 0 && !prefersReducedMotion()){
       startContinuousConfetti();
     }
     
     // 成功パルス効果
-    resultsPanel.classList.add('success-pulse');
-    setTimeout(() => resultsPanel.classList.remove('success-pulse'), 800);
+    if(!prefersReducedMotion()){
+      resultsPanel.classList.add('success-pulse');
+      setTimeout(() => resultsPanel.classList.remove('success-pulse'), 800);
+    }
   }
   
-  // モーダルの近くにコピーボタンを配置（はみ出し回避）
+  // モーダルの近くにコピーボタンを配置（モーダル幅いっぱいで中央寄せ）
   function positionCopyActions(){
     const actions = document.querySelector('.copy-actions');
     if(!actions || !actions.classList.contains('show')) return;
@@ -602,26 +618,32 @@
       return;
     }
     const panelRect = resultsPanel.getBoundingClientRect();
-    const actionsRect = actions.getBoundingClientRect();
+    // モーダル幅を適用
+    actions.style.width = panelRect.width + 'px';
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const s = 16; // 余白
-
-    // デスクトップ: モーダル直下に中央配置
-    let left = panelRect.left + (panelRect.width - actionsRect.width) / 2;
+    let left = panelRect.left;
     let top = panelRect.bottom + s;
-
-    // 下にはみ出す場合はモーダル上に配置
-    if(top + actionsRect.height > vh - s){
-      top = panelRect.top - actionsRect.height - s;
-    }
-
-    // ビューポート内に収める
-    left = Math.max(s, Math.min(left, vw - actionsRect.width - s));
-    top  = Math.max(s, Math.min(top,  vh - actionsRect.height - s));
-
     actions.style.left = Math.round(left) + 'px';
-    actions.style.top  = Math.round(top)  + 'px';
+    actions.style.top = Math.round(top) + 'px';
+    // 上に逃がす判定（スペース不足）
+    const aRect = actions.getBoundingClientRect();
+    if(top + aRect.height > vh - s){
+      const newTop = panelRect.top - aRect.height - s;
+      if(newTop >= s){
+        actions.style.top = Math.round(newTop) + 'px';
+      }
+    }
+    // 横はみ出し調整
+    const afterRect = actions.getBoundingClientRect();
+    if(afterRect.left < s){
+      actions.style.left = s + 'px';
+      actions.style.width = Math.min(panelRect.width, vw - s*2) + 'px';
+    } else if(afterRect.right > vw - s){
+      actions.style.left = Math.max(s, vw - afterRect.width - s) + 'px';
+      actions.style.width = Math.min(panelRect.width, vw - s*2) + 'px';
+    }
   }
 
   // リサイズ時にも追従
@@ -674,9 +696,44 @@
       visualViewport.addEventListener('scroll', updateCopyActionsViewportOffset);
     }
   }catch(e){}
+
+  // モーダルのフォーカストラップ
+  let lastFocusedBeforeModal = null;
+  let focusTrapHandler = null;
+  function startModalFocusTrap(){
+    try{ lastFocusedBeforeModal = document.activeElement; }catch(e){ lastFocusedBeforeModal = null; }
+    // 初期フォーカスを閉じるボタンへ
+    try{ if(closeResults) closeResults.focus(); }catch(e){}
+    const selector = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
+    focusTrapHandler = function(e){
+      if(e.key !== 'Tab') return;
+      const nodes = Array.from(resultsPanel.querySelectorAll(selector)).filter(el=>el.offsetParent !== null || el === document.activeElement);
+      if(nodes.length === 0) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      if(e.shiftKey){
+        if(document.activeElement === first){ e.preventDefault(); last.focus(); }
+      } else {
+        if(document.activeElement === last){ e.preventDefault(); first.focus(); }
+      }
+    };
+    document.addEventListener('keydown', focusTrapHandler);
+  }
+  function stopModalFocusTrap(){
+    if(focusTrapHandler){
+      document.removeEventListener('keydown', focusTrapHandler);
+      focusTrapHandler = null;
+    }
+    // モーダルを閉じたら元の要素へフォーカス返却
+    if(lastFocusedBeforeModal && typeof lastFocusedBeforeModal.focus === 'function' && document.contains(lastFocusedBeforeModal)){
+      try{ lastFocusedBeforeModal.focus(); }catch(e){}
+    }
+    lastFocusedBeforeModal = null;
+  }
   
 
   function createSuperConfetti(){
+    if(prefersReducedMotion()) return; // 動きの少ない設定
     const confettiContainer = document.createElement('div');
     confettiContainer.style.position = 'fixed';
     confettiContainer.style.top = '0';
@@ -765,6 +822,7 @@
   }
 
   function startContinuousConfetti(){
+    if(prefersReducedMotion()) return; // 動きの少ない設定
     // 既存の紙吹雪を停止
     stopConfetti();
     
@@ -840,6 +898,10 @@
   }
 
   function csvq(s){ return '"'+String(s).replace(/"/g,'""')+'"'; }
+  function prefersReducedMotion(){
+    try { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+    catch(e){ return false; }
+  }
   async function doCopy(text, okMsg){
     console.log('コピーするテキスト:', text);
     try{
@@ -883,6 +945,8 @@
   function toast(msg){
     const t = document.createElement('div');
     t.textContent = msg;
+    t.setAttribute('role','status');
+    t.setAttribute('aria-live','polite');
     t.style.position='fixed';t.style.right='16px';t.style.bottom='16px';
     t.style.padding='10px 14px';t.style.border='1px solid var(--border)';t.style.background='var(--panel-soft)';t.style.borderRadius='10px';
     t.style.boxShadow='var(--shadow)';t.style.opacity='0';t.style.transition='all .25s ease';
@@ -1186,7 +1250,6 @@
       pointsA: pointsA.value,
       pointsB: pointsB.value,
       pointsC: pointsC.value,
-      uniquePerList: uniquePerList.checked,
       minPoints: minPoints.value,
       products: products
     };
@@ -1213,7 +1276,7 @@
     pointsA.value = '1';
     pointsB.value = '1';
     pointsC.value = '1';
-    uniquePerList.checked = true;
+    // 重複行は固定で1件扱い（UIなし）
     minPoints.value = '1';
     
     // 商品をリセット
@@ -1255,7 +1318,6 @@
         pointsA.value = data.pointsA || '1';
         pointsB.value = data.pointsB || '1';
         pointsC.value = data.pointsC || '1';
-        uniquePerList.checked = data.uniquePerList !== false;
         minPoints.value = data.minPoints || '1';
         
         // 商品データを復元
@@ -1331,6 +1393,7 @@
     <button class="help-close" onclick="toggleHelp()">&times;</button>
     <div class="help-title">📖 使い方ガイド</div>
     <div class="help-step"><strong>1. リスト入力:</strong> まずはリストAに参加者名を1行ずつ入力。リストB/Cにも同一参加者名を追加で当選確率アップ。除外も設定可能。B/Cや除外は「＋ 追加のリスト/除外を表示」で開けます。</div>
+    <div class="help-step"><strong>整形（任意）:</strong> ごちゃ混ぜのテキストから <code>@</code> で始まる行だけを抽出したいときは、右上の「🧹 整形」ツールを使います。各リスト見出しの「🧹 整形」でも個別整形が可能（重複を自動で削除）。</div>
     <div class="help-step"><strong>2. 商品設定:</strong> 商品名と当選人数を設定。「+ 商品を追加」で複数商品に対応。</div>
     <div class="help-step"><strong>3. 抽選実行:</strong> 「抽選する」で開始。結果モーダル隣のボタンから「名前/CSV」をコピーできます。</div>
     <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);color:var(--muted);font-size:13px">
