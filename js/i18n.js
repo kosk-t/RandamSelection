@@ -310,7 +310,7 @@ const i18n = {
       const langMenuItem = document.createElement('button');
       langMenuItem.className = 'menu-item';
       langMenuItem.setAttribute('data-action', 'language');
-      langMenuItem.textContent = this.currentLang === 'ja' ? '🌐 English' : '🌐 Japanese';
+      langMenuItem.textContent = this.currentLang === 'ja' ? '🌐 EN' : '🌐 JP';
       menuDropdown.appendChild(langMenuItem);
     }
   }
