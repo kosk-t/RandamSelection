@@ -24,6 +24,7 @@
     .btn.ghost{color:var(--text);background:transparent;border:1px solid var(--border)}
     .btn:hover{transform:translateY(-2px);box-shadow:0 16px 40px rgba(0,212,170,.35)}
     .btn:active{transform:translateY(0);box-shadow:0 8px 24px rgba(0,212,170,.25)}
+    .btn.sm{padding:8px 12px;min-height:36px;font-size:12px}
 
     /* モバイルメニュー */
     .menu-dropdown{position:absolute;right:0;top:calc(100% + 8px);background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);padding:8px;min-width:160px;display:flex;flex-direction:column;gap:6px;z-index:1200}
@@ -115,6 +116,19 @@
     }
     .product-winners{width:80px}
     .remove-product{font-size:12px;padding:6px 12px}
+
+    /* Formatter Modal */
+    .format-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.7);z-index:1250;opacity:0;visibility:hidden;transition:all 0.3s ease}
+    .format-overlay.show{opacity:1;visibility:visible}
+    .format-content{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px;max-width:520px;width:92vw;z-index:1251;box-shadow:var(--shadow)}
+    .format-title{font-size:18px;font-weight:700;margin-bottom:12px;color:var(--accent)}
+    .format-row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+    .format-close{position:absolute;top:10px;right:10px;width:32px;height:32px;border:none;background:transparent;color:var(--muted);border-radius:50%;cursor:pointer;font-size:16px}
+    .format-close:hover{background:var(--border);color:var(--text)}
+    .format-input{width:100%;height:120px}
+    .format-output{width:100%;height:120px}
+    .format-label{font-size:13px;font-weight:600;color:var(--muted);margin:8px 0 4px}
+    .format-count{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:700;color:var(--accent);background:var(--badge);border:1px solid var(--border);padding:6px 12px;border-radius:999px}
     
     @media (min-width:900px){.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:24px}}
     @media (max-width:768px){
@@ -171,23 +185,28 @@
     <header class="appbar">
       <div class="title">ポイント制 抽選ツール</div>
       <div class="toolbar">
-        <button id="btnSave" class="btn secondary" title="現在の設定を保存">💾 保存</button>
+        <button id="btnFormat" class="btn secondary" title="リスト整形ツール">🧹 整形</button>
+        <button id="btnSave" class="btn ghost" title="現在の設定を保存">💾 保存</button>
         <button id="btnReset" class="btn ghost" title="すべてを初期状態に戻す">🔄 リセット</button>
         <button id="btnTheme" class="btn ghost" aria-label="テーマ切り替え">🌙 ダーク</button>
       </div>
       <div class="mobile-actions">
         <button id="btnMenu" class="btn secondary more-btn" aria-haspopup="true" aria-expanded="false" aria-label="メニュー">☰</button>
         <div id="menuDropdown" class="menu-dropdown" hidden>
+          <button class="menu-item" data-action="format">🧹 整形ツール</button>
+          <div class="menu-divider"></div>
           <button class="menu-item" data-action="save">💾 保存</button>
           <button class="menu-item" data-action="reset">🔄 リセット</button>
-          <div class="menu-divider"></div>
           <button class="menu-item" data-action="theme" id="menuTheme">🌓 テーマ切替</button>
         </div>
       </div>
     </header>
 
     <div class="card" id="cardA">
-      <h3>リスト A</h3>
+      <h3 style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <span>リスト A</span>
+        <button id="btnFormatInline" class="btn ghost sm" title="ごちゃ混ぜを整形して@行だけ抽出">🧹 整形</button>
+      </h3>
       <textarea id="listA" placeholder="1行に1名を貼り付け"></textarea>
       <div class="form-row"><span class="pill">ポイント <input id="pointsA" type="number" value="1" step="0.1" min="0"></span></div>
     </div>
@@ -827,6 +846,7 @@
   const btnMenu = document.getElementById('btnMenu');
   const menuDropdown = document.getElementById('menuDropdown');
   const menuTheme = document.getElementById('menuTheme');
+  const btnFormat = document.getElementById('btnFormat');
   
   function updateMenuThemeText(){
     const theme = document.documentElement.getAttribute('data-theme') || 'light';
@@ -865,11 +885,92 @@
       const action = t.getAttribute('data-action');
       if(action === 'save') saveData();
       if(action === 'reset') resetData();
+      if(action === 'format') openFormatter();
       if(action === 'theme'){
         const cur = document.documentElement.getAttribute('data-theme') || 'dark';
         applyTheme(cur === 'dark' ? 'light' : 'dark');
       }
       closeMenu();
+    });
+  }
+
+  // Formatter tool
+  function openFormatter(){
+    const ov = document.getElementById('formatOverlay');
+    if(!ov) return;
+    ov.classList.add('show');
+    updateFormatCount();
+    // 外側クリックで閉じる（初回だけバインド）
+    if(!ov.dataset.bound){
+      ov.addEventListener('click', (e)=>{ if(e.target === ov) closeFormatter(); });
+      ov.dataset.bound = '1';
+    }
+    // ESCで閉じる（開いている間だけ有効）
+    const onKey = (e)=>{
+      if(e.key === 'Escape'){
+        closeFormatter();
+        document.removeEventListener('keydown', onKey);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+  }
+  function closeFormatter(){
+    const ov = document.getElementById('formatOverlay');
+    if(!ov) return;
+    ov.classList.remove('show');
+  }
+  if(btnFormat){ btnFormat.addEventListener('click', openFormatter); }
+  const btnFormatInline = document.getElementById('btnFormatInline');
+  if(btnFormatInline){ btnFormatInline.addEventListener('click', openFormatter); }
+  
+  function extractAtLines(){
+    const input = document.getElementById('formatInput');
+    const output = document.getElementById('formatOutput');
+    const dedupe = document.getElementById('formatDedupe');
+    if(!input || !output) return;
+    const lines = String(input.value || '').split(/\r?\n|\r/);
+    const kept = [];
+    const seen = new Set();
+    for(const raw of lines){
+      const s = raw.trim();
+      if(!s) continue;
+      if(s.startsWith('@')){
+        if(dedupe && dedupe.checked){
+          if(seen.has(s)) continue;
+          seen.add(s);
+        }
+        kept.push(s);
+      }
+    }
+    output.value = kept.join('\n');
+    updateFormatCount();
+    toast(`＠始まり ${kept.length} 件`);
+  }
+  function copyFormatted(){
+    const output = document.getElementById('formatOutput');
+    if(!output) return;
+    doCopy(output.value || '', '✅ 整形結果をコピーしました');
+  }
+  // グローバルに公開（インラインonclickから呼べるように）
+  window.extractAtLines = extractAtLines;
+  window.copyFormatted = copyFormatted;
+
+  function updateFormatCount(){
+    const output = document.getElementById('formatOutput');
+    const counter = document.getElementById('formatCount');
+    if(!output || !counter) return;
+    const n = String(output.value || '').split(/\r?\n|\r/).filter(Boolean).length;
+    counter.textContent = '結果: ' + n + ' 行';
+  }
+
+  // オーバーレイの外側クリック/ESCで閉じる
+  const formatOverlay = document.getElementById('formatOverlay');
+  if(formatOverlay){
+    formatOverlay.addEventListener('click', (e)=>{
+      if(e.target === formatOverlay) closeFormatter();
+    });
+    document.addEventListener('keydown', (e)=>{
+      if(e.key === 'Escape' && formatOverlay.classList.contains('show')) closeFormatter();
     });
   }
   
@@ -1072,6 +1173,29 @@
       <div class="help-step"><strong>ポイント設定:</strong> 各リストのポイントを入力して当選しやすさを調整。</div>
       <div class="help-step"><strong>確率確認:</strong> 「確率を計算」で候補者と当選確率を確認。</div>
       <div class="help-step"><strong>保存/リセット/テーマ:</strong> 右上から操作。保存した内容は次回読み込み。</div>
+    </div>
+  </div>
+</div>
+
+<!-- 整形ツール オーバーレイ -->
+<div class="format-overlay" id="formatOverlay">
+  <div class="format-content">
+    <button class="format-close" onclick="(function(){document.getElementById('formatOverlay').classList.remove('show')})()">&times;</button>
+    <div class="format-title">🧹 リスト整形ツール</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:6px;">ごちゃ混ぜのテキストから「＠で始まる行」だけを抽出します。</div>
+    <textarea id="formatInput" class="format-input" placeholder="ここに貼り付け"></textarea>
+    <div class="format-row">
+      <label class="pill" style="margin:0;">
+        <input id="formatDedupe" type="checkbox" checked> 重複を削除
+      </label>
+      <button class="btn secondary" onclick="(function(){ if(window.extractAtLines) extractAtLines(); })()">＠で始まる行だけ抽出</button>
+      <button class="btn ghost" onclick="(function(){ const t=document.getElementById('formatInput'); if(t){ t.value=''; t.focus(); } })()">入力クリア</button>
+    </div>
+    <div class="format-label">抽出結果</div>
+    <textarea id="formatOutput" class="format-output" placeholder="抽出結果" readonly></textarea>
+    <div class="format-row" style="justify-content:space-between;align-items:center;">
+      <div id="formatCount" class="format-count">結果: 0 行</div>
+      <button class="btn primary" onclick="(function(){ if(window.copyFormatted) copyFormatted(); })()">結果をコピー</button>
     </div>
   </div>
 </div>
