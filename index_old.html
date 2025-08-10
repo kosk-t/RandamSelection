@@ -1,0 +1,1540 @@
+<!doctype html>
+<html lang="ja" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ポイント制 抽選ツール</title>
+  <style>
+    :root{--bg:#0f0f23;--panel:#1a1a2e;--panel-soft:#25253f;--panel-exclude:#2d1b1b;--text:#f0f4f8;--muted:#a0a9b8;--accent:#00d4aa;--accent2:#7c3aed;--border:rgba(255,255,255,.15);--ink:#ffffff;--shadow:0 20px 50px rgba(0,0,0,.4);--input-bg:#16213e;--table-head:#1e2749;--badge:#1e2749;--result-bg:linear-gradient(135deg,#667eea,#764ba2);--success:#10b981;--warning:#f59e0b;--danger:#ef4444}
+    html[data-theme="light"]{--bg:#fafbfc;--panel:#ffffff;--panel-soft:#f8fafc;--panel-exclude:#fef2f2;--text:#1e293b;--muted:#64748b;--accent:#0ea5e9;--accent2:#8b5cf6;--border:rgba(15,23,42,.08);--ink:#ffffff;--shadow:0 20px 50px rgba(15,23,42,.1);--input-bg:#ffffff;--table-head:#f1f5f9;--badge:#f1f5f9;--result-bg:linear-gradient(135deg,#667eea,#764ba2);--success:#059669;--warning:#d97706;--danger:#dc2626}
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Inter',sans-serif;background:radial-gradient(1200px 600px at 10% -10%, rgba(0,212,170,.08), transparent),radial-gradient(1200px 600px at 110% 10%, rgba(124,58,237,.06), transparent),var(--bg);color:var(--text);margin:0;line-height:1.6;font-weight:400}
+    .wrap{max-width:1200px;margin:28px auto;padding:0 20px}
+    @media (max-width:480px){.wrap{margin:16px auto;padding:0 12px}}
+    header.appbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    header .title{font-size:clamp(22px,4vw,32px);font-weight:800;letter-spacing:.2px}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+    .mobile-actions{position:relative;display:none}
+    .more-btn{display:none}
+    .btn{position:relative;cursor:pointer;border:none;border-radius:16px;padding:12px 20px;font-weight:600;transition:all 0.2s cubic-bezier(0.4,0,0.2,1);font-size:14px;letter-spacing:0.025em;min-height:44px;display:flex;align-items:center;justify-content:center}
+    @media (max-width:480px){.btn{padding:14px 18px;font-size:16px;min-height:48px}}
+    .btn.primary{color:white;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 12px 32px rgba(0,212,170,.25);transform:translateY(0)}
+    .btn.secondary{color:var(--text);background:var(--panel-soft);border:1px solid var(--border)}
+    .btn.ghost{color:var(--text);background:transparent;border:1px solid var(--border)}
+    .btn:hover{transform:translateY(-2px);box-shadow:0 16px 40px rgba(0,212,170,.35)}
+    .btn:active{transform:translateY(0);box-shadow:0 8px 24px rgba(0,212,170,.25)}
+    .btn.sm{padding:8px 12px;min-height:36px;font-size:12px}
+  .btn.saving{animation:flash 0.5s ease-in-out}
+  @keyframes flash{0%,100%{filter:none}50%{filter:brightness(1.8)}}
+
+    /* モバイルメニュー */
+    .menu-dropdown{position:absolute;right:0;top:calc(100% + 8px);background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);padding:8px;min-width:160px;display:flex;flex-direction:column;gap:6px;z-index:1200}
+    .menu-dropdown[hidden]{display:none !important}
+    .menu-item{appearance:none;border:none;background:transparent;color:var(--text);text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:14px}
+    .menu-item:hover{background:var(--panel-soft)}
+    .menu-divider{height:1px;background:var(--border);margin:4px 0}
+    .card{background:linear-gradient(180deg,var(--panel),var(--panel-soft));padding:24px;border-radius:20px;margin-bottom:24px;border:1px solid var(--border);box-shadow:var(--shadow);backdrop-filter:blur(12px);transition:box-shadow 0.2s ease,border-color 0.2s ease}
+    .card:hover{box-shadow:0 20px 50px rgba(0,0,0,.3);border-color:rgba(255,255,255,.3)}
+    .card h3{margin:0 0 10px}
+    .card.exclude{background:linear-gradient(180deg,var(--panel-exclude),#ffb3b3);border-color:#ff8b8b66}
+    .card.exclude h3{display:flex;align-items:center;gap:8px}
+  .chip{display:inline-block;font-size:11px;padding:3px 10px;border-radius:999px;border:1px solid #ffd8d8;color:#4b1014;background:#ffd8d8;mix-blend-mode:screen;font-weight:600}
+  /* ライトテーマではブレンドを無効化してコントラストを確保 */
+  html[data-theme="light"] .chip{background:#ffe1e1;border:1px solid #ffc4c4;color:#7a0e14;mix-blend-mode:normal}
+    textarea{width:100%;height:120px;resize:vertical;background:var(--input-bg);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px;font-family:ui-monospace,Consolas,monospace;font-size:14px}
+    @media (max-width:480px){
+      .toolbar{display:none}
+      .mobile-actions{display:block}
+      .more-btn{display:inline-flex}
+      textarea{height:100px;font-size:16px;padding:12px}
+    }
+    .form-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+    @media (max-width:480px){
+      .form-row{flex-direction:column;gap:12px}
+      .form-row .pill{width:100%;justify-content:space-between}
+    }
+    .pill{display:inline-flex;gap:10px;align-items:center;background:rgba(255,255,255,.06);border:1px solid var(--border);padding:8px 12px;border-radius:999px;min-height:44px}
+    @media (max-width:480px){.pill{padding:12px 16px;min-height:48px}}
+    html[data-theme="light"] .pill{background:#fff}
+    /* 2カラムグリッド（B/Cリスト用） */
+    .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+    @media (max-width:768px){.grid-2{grid-template-columns:1fr;gap:12px}}
+    input[type=number]{width:110px;min-height:32px;font-size:16px}
+    @media (max-width:480px){
+      input[type=number]{width:80px;font-size:18px;min-height:36px}
+      input[type=text]{font-size:16px;min-height:36px}
+    }
+    .statsbar{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:12px;color:var(--muted);font-size:14px}
+    @media (max-width:480px){
+      .statsbar{flex-direction:column;gap:8px;font-size:13px}
+    }
+    .table-scroll{max-height:460px;overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--panel-soft);margin-top:12px;-webkit-overflow-scrolling:touch}
+    @media (max-width:480px){
+      .table-scroll{max-height:300px;font-size:14px}
+      th,td{padding:8px 10px;font-size:13px}
+    }
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:12px 14px;border-bottom:1px solid rgba(2,6,23,.08);font-size:14px;word-break:break-word}
+    th{color:inherit;text-align:left;position:sticky;top:0;background:var(--table-head);z-index:1}
+    td.mono,th.mono{font-family:ui-monospace,Consolas,monospace}
+    .results{position:fixed;top:0;left:0;right:0;bottom:0;margin:auto;background:var(--result-bg);border:1px solid var(--border);border-radius:24px;padding:32px;box-shadow:0 25px 75px rgba(0,0,0,.5);backdrop-filter:blur(20px);max-width:600px;width:90vw;height:fit-content;max-height:80vh;z-index:1000;opacity:0;visibility:hidden;transition:opacity 0.3s ease,visibility 0.3s ease}
+    .results.show{opacity:1;visibility:visible}
+    .results-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.6);z-index:999;opacity:0;visibility:hidden;transition:all 0.3s ease}
+    .results-overlay.show{opacity:1;visibility:visible}
+    .results-header{display:flex;justify-content:center;align-items:center;margin-bottom:24px}
+    .close-btn{position:absolute;top:16px;right:16px;width:32px;height:32px;border:none;background:rgba(255,255,255,.1);color:white;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all 0.2s ease}
+    .close-btn:hover{background:rgba(255,255,255,.2);transform:scale(1.1)}
+  .copy-actions{position:fixed;top:0;left:0;display:flex;gap:16px;opacity:0;visibility:hidden;transition:opacity 0.3s ease,visibility 0.3s ease;flex-direction:row;align-items:center;justify-content:center;z-index:1100;padding:0 12px}
+  /* モバイル: 画面下固定（既存クラス bottom 付与時） */
+  .copy-actions.bottom{left:0 !important;right:0;width:100vw !important;justify-content:center;padding:12px 16px;box-sizing:border-box}
+    .copy-actions.show{opacity:1;visibility:visible}
+
+    .copy-btn{position:relative;height:48px;min-width:48px;border:none;background:rgba(0,212,170,.9);color:white;border-radius:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);border:1px solid rgba(255,255,255,.2);overflow:hidden;white-space:nowrap;box-shadow:0 4px 16px rgba(0,212,170,.3);backdrop-filter:blur(10px)}
+    .copy-btn.secondary{background:rgba(255,255,255,.08);box-shadow:0 4px 12px rgba(0,0,0,.2)}
+    .copy-actions.below .copy-btn{min-width:160px}
+    .copy-btn .btn-text{max-width:0;opacity:0;margin-left:0;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);font-size:11px;font-weight:500}
+    .copy-actions.show .copy-btn{background:rgba(0,212,170,.9);min-width:140px}
+    .copy-actions.show .copy-btn .btn-text{max-width:90px;opacity:1;margin-left:8px}
+    .copy-btn:hover{background:rgba(0,212,170,1);transform:scale(1.05);box-shadow:0 6px 20px rgba(0,212,170,.4)}
+
+    /* モバイル時はコピーボタンをボトム固定に配置 */
+    @media (max-width:600px){
+      .copy-actions.bottom{position:fixed;left:0;right:0;top:auto;bottom:calc(env(safe-area-inset-bottom, 0px) + 12px);flex-direction:row;align-items:center;justify-content:center;padding-left:calc(env(safe-area-inset-left, 0px) + 12px);padding-right:calc(env(safe-area-inset-right, 0px) + 12px);gap:10px}
+      .copy-actions.bottom{padding-top:8px;padding-bottom:8px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:16px}
+      html[data-theme="light"] .copy-actions.bottom{background:rgba(255,255,255,.8);border:1px solid var(--border);box-shadow:0 8px 24px rgba(15,23,42,.12)}
+      html[data-theme="dark"] .copy-actions.bottom{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.15);box-shadow:0 8px 24px rgba(0,0,0,.35)}
+      .copy-actions.bottom .copy-btn{flex:1;min-width:0;height:52px}
+      .copy-actions.bottom .btn-text{max-width:120px;opacity:1;margin-left:8px}
+    }
+
+    /* デスクトップ時にモーダル直下配置用の横並びスタイル */
+    @media (min-width:601px){
+      .copy-actions.below{flex-direction:row;align-items:center;justify-content:center}
+    }
+    
+    
+    /* ヒント表示システム */
+    .help-toggle{position:fixed;bottom:20px;right:20px;width:48px;height:48px;border-radius:50%;background:rgba(0,212,170,.8);color:white;border:none;font-size:20px;cursor:pointer;z-index:1100;box-shadow:0 4px 16px rgba(0,212,170,.3);transition:all 0.3s ease;backdrop-filter:blur(10px)}
+    .help-toggle:hover{transform:scale(1.1);box-shadow:0 6px 20px rgba(0,212,170,.4)}
+    .help-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.7);z-index:1200;opacity:0;visibility:hidden;transition:all 0.3s ease}
+    .help-overlay.show{opacity:1;visibility:visible}
+    .help-content{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:400px;width:90vw;z-index:1201;box-shadow:var(--shadow)}
+    .help-title{font-size:18px;font-weight:700;margin-bottom:16px;color:var(--accent)}
+    .help-step{margin-bottom:12px;font-size:14px;line-height:1.5}
+    .help-step strong{color:var(--accent);font-weight:600}
+    .help-close{position:absolute;top:12px;right:12px;width:32px;height:32px;border:none;background:transparent;color:var(--muted);border-radius:50%;cursor:pointer;font-size:16px;transition:all 0.2s ease}
+    .help-close:hover{background:var(--border);color:var(--text)}
+    @media (max-width:480px){
+      .help-toggle{bottom:16px;right:16px;width:52px;height:52px;font-size:22px}
+      .help-content{padding:20px;border-radius:12px}
+    }
+    .results-title{font-weight:700;letter-spacing:0.025em;font-size:24px;margin-bottom:8px;color:white}
+    /* タイトルのグリント/チェック演出は不使用 */
+
+    /* 以前のアウトラインスイープは無効化（不要） */
+    .result-badges{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px}
+    .badge{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);padding:12px 20px;border-radius:999px;backdrop-filter:blur(10px);color:white;font-weight:600;font-size:16px;transition:transform 0.2s ease;position:relative;will-change:transform}
+    .badge:hover{transform:scale(1.02);z-index:2}
+  /* 複数行で当選者が折り返された際の重なり防止 */
+  .badge{display:inline-flex;align-items:center;line-height:1;}
+  /* 商品ごとのラッパー(div)内でもバッジを折り返しレイアウト */
+  .result-badges > div{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;}
+  .result-badges > div > h4{flex-basis:100%;margin:0 0 8px !important;}
+    
+    /* Products */
+    .product-item{margin-bottom:8px;padding:12px;background:rgba(255,255,255,.02);border-radius:12px;border:1px solid var(--border)}
+    .product-name{width:180px;min-height:32px;font-size:16px}
+    @media (max-width:480px){
+      .product-name{width:100%;font-size:16px;min-height:36px}
+    }
+    .product-winners{width:80px}
+    .remove-product{font-size:12px;padding:6px 12px}
+
+    /* Formatter Modal */
+    .format-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.7);z-index:1250;opacity:0;visibility:hidden;transition:all 0.3s ease}
+    .format-overlay.show{opacity:1;visibility:visible}
+    .format-content{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px;max-width:520px;width:92vw;z-index:1251;box-shadow:var(--shadow)}
+    .format-title{font-size:18px;font-weight:700;margin-bottom:12px;color:var(--accent)}
+    .format-row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+    .format-close{position:absolute;top:10px;right:10px;width:32px;height:32px;border:none;background:transparent;color:var(--muted);border-radius:50%;cursor:pointer;font-size:16px}
+    .format-close:hover{background:var(--border);color:var(--text)}
+    .format-input{width:100%;height:120px}
+    .format-output{width:100%;height:120px}
+    .format-label{font-size:13px;font-weight:600;color:var(--muted);margin:8px 0 4px}
+    .format-count{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:700;color:var(--accent);background:var(--badge);border:1px solid var(--border);padding:6px 12px;border-radius:999px}
+
+    /* List line counters */
+    .count-badge{display:inline-flex;align-items:center;gap:4px;margin-left:8px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:var(--badge);color:var(--muted);font-size:12px;font-weight:600}
+    
+    @media (min-width:900px){.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:24px}}
+    @media (max-width:768px){
+      .results{padding:24px;max-width:95vw;max-height:85vh}
+      .badge{font-size:14px;padding:10px 16px}
+      .grid-2{display:block}
+    }
+    @media (max-width:480px){
+      .results{padding:20px;max-width:98vw;max-height:90vh;border-radius:16px}
+      .results-title{font-size:20px}
+      .badge{font-size:16px;padding:12px 18px;min-height:44px;display:flex;align-items:center;justify-content:center}
+      .close-btn{width:44px;height:44px;font-size:20px;top:12px;right:12px}
+      .copy-btn{min-height:44px;font-size:13px}
+      .toolbar{justify-content:center;gap:12px}
+      .wrap{position:relative}
+    }
+    
+    @keyframes bounce{0%,20%,50%,80%,100%{transform:translateY(0)}40%{transform:translateY(-20px)}60%{transform:translateY(-10px)}}
+    @keyframes fadeInUp{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:translateY(0)}}
+    @keyframes slideInFromLeft{0%{opacity:0;transform:translateX(-50px)}100%{opacity:1;transform:translateX(0)}}
+    
+    /* Winner Badge Animations */
+    .badge{animation:fadeInUp 0.6s ease-out forwards;opacity:0}
+    .badge:nth-child(1){animation-delay:0.1s}
+    .badge:nth-child(2){animation-delay:0.3s}
+    .badge:nth-child(3){animation-delay:0.5s}
+    .badge:nth-child(4){animation-delay:0.7s}
+    .badge:nth-child(5){animation-delay:0.9s}
+    
+    /* Enhanced Confetti Effect */
+    .confetti{position:absolute;animation:confetti-fall linear infinite;pointer-events:none}
+    .confetti.rect{width:12px;height:8px}
+    .confetti.circle{width:10px;height:10px;border-radius:50%}
+    .confetti.triangle{width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:10px solid}
+    .confetti.star{width:0;height:0;position:relative;display:inline-block}
+    .confetti.star:before,.confetti.star:after{content:'';position:absolute;left:-6px;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:4px solid;transform:rotate(35deg)}
+    .confetti.star:after{transform:rotate(-35deg)}
+    @keyframes confetti-fall{0%{transform:translateY(-150px) rotateZ(0deg) rotateX(0deg) rotateY(0deg);opacity:1}100%{transform:translateY(calc(100vh + 100px)) rotateZ(720deg) rotateX(360deg) rotateY(180deg);opacity:0}}
+    @keyframes confetti-shake{0%,100%{transform:translateX(0px)}25%{transform:translateX(5px)}75%{transform:translateX(-5px)}}
+    
+    /* Cracker Effect */
+    @keyframes cracker-burst{0%{transform:scale(0) rotate(0deg);opacity:1}30%{transform:scale(1.2) rotate(180deg);opacity:0.8}100%{transform:scale(2) rotate(360deg);opacity:0}}
+    
+    /* Drawing Animation */
+    .drawing{animation:bounce 0.5s ease-in-out infinite}
+    
+    /* Success Pulse */
+    .success-pulse{animation:success-pulse 0.8s ease-out}
+    @keyframes success-pulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
+
+    /* CSS-only Celebrate (glow + radial flash) */
+    .results.celebrate{animation:glow-pulse 0.9s ease-out}
+    .results.celebrate::after{content:"";position:absolute;inset:-20%;border-radius:inherit;pointer-events:none;
+      background:radial-gradient( circle at 50% 50%, rgba(255,255,255,.35) 0%, rgba(255,255,255,.18) 35%, rgba(255,255,255,0) 60% );
+      filter:blur(1px);opacity:0;transform:scale(0.6);animation:flash-burst 700ms ease-out forwards}
+    @keyframes glow-pulse{0%{box-shadow:0 25px 75px rgba(0,0,0,.5),0 0 0 rgba(255,255,255,0)}50%{box-shadow:0 30px 85px rgba(0,0,0,.55),0 0 40px rgba(255,255,255,.25)}100%{box-shadow:0 25px 75px rgba(0,0,0,.5),0 0 0 rgba(255,255,255,0)}}
+    @keyframes flash-burst{0%{opacity:0;transform:scale(0.6)}30%{opacity:.55;transform:scale(1)}100%{opacity:0;transform:scale(1.4)}}
+
+    /* 動きの少ない設定を尊重 */
+    @media (prefers-reduced-motion: reduce){
+      *{animation:none !important;transition:none !important}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="appbar">
+      <div class="title">ポイント制 抽選ツール</div>
+      <div class="toolbar">
+        <button id="btnFormat" class="btn secondary" title="リスト整形ツール">🧹 整形</button>
+        <button id="btnSave" class="btn ghost" title="現在の設定を保存">💾 保存</button>
+        <button id="btnReset" class="btn ghost" title="すべてを初期状態に戻す">🔄 リセット</button>
+        <button id="btnTheme" class="btn ghost" aria-label="テーマ切り替え">🌙 ダーク</button>
+      </div>
+      <div class="mobile-actions">
+        <button id="btnMenu" class="btn secondary more-btn" aria-haspopup="true" aria-expanded="false" aria-label="メニュー">☰</button>
+        <div id="menuDropdown" class="menu-dropdown" hidden>
+          <button class="menu-item" data-action="format">🧹 整形ツール</button>
+          <div class="menu-divider"></div>
+          <button class="menu-item" data-action="save">💾 保存</button>
+          <button class="menu-item" data-action="reset">🔄 リセット</button>
+          <button class="menu-item" data-action="theme" id="menuTheme">🌓 テーマ切替</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="card" id="cardA">
+      <h3 style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <span>リスト A <span id="countA" class="count-badge">0 行</span></span>
+        <button id="btnFormatInline" class="btn ghost sm" title="ごちゃ混ぜを整形して@行だけ抽出">🧹 整形</button>
+      </h3>
+      <textarea id="listA" placeholder="1行に1名を貼り付け"></textarea>
+      <div class="form-row"><span class="pill">ポイント <input id="pointsA" type="number" value="1" step="0.1" min="0"></span></div>
+    </div>
+
+    <div class="form-row" style="margin:8px 0 16px;">
+      <button id="toggleAdvanced" class="btn ghost">＋ 追加のリスト/除外を表示</button>
+    </div>
+
+    <div id="advancedSection" hidden>
+      <div class="grid-2">
+        <div class="card" id="cardB">
+          <h3 style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <span>リスト B <span id="countB" class="count-badge">0 行</span></span>
+            <button id="btnFormatInlineB" class="btn ghost sm" title="リストBを@始まりだけに整形">🧹 整形</button>
+          </h3>
+          <textarea id="listB" placeholder="1行に1名を貼り付け"></textarea>
+          <div class="form-row"><span class="pill">ポイント <input id="pointsB" type="number" value="1" step="0.1" min="0"></span></div>
+        </div>
+        <div class="card" id="cardC">
+          <h3 style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <span>リスト C <span id="countC" class="count-badge">0 行</span></span>
+            <button id="btnFormatInlineC" class="btn ghost sm" title="リストCを@始まりだけに整形">🧹 整形</button>
+          </h3>
+          <textarea id="listC" placeholder="1行に1名を貼り付け"></textarea>
+          <div class="form-row"><span class="pill">ポイント <input id="pointsC" type="number" value="1" step="0.1" min="0"></span></div>
+        </div>
+      </div>
+      <div class="card exclude" id="cardExclude">
+        <h3 style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <span>除外リスト <span class="chip">EXCLUDE</span> <span id="countExclude" class="count-badge">0 行</span></span>
+        </h3>
+        <textarea id="exclude" placeholder="対象外の名前（1行に1名）"></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>抽選設定</h3>
+      <div class="form-row">
+        <span class="pill">最小ポイント <input id="minPoints" type="number" value="1" step="0.1" min="0"></span>
+      </div>
+      
+      <div style="margin-top:16px;">
+        <h4 style="margin:0 0 8px 0;">商品・景品設定</h4>
+        <div id="productsContainer">
+          <div class="product-item" data-index="0">
+            <div class="form-row">
+              <span class="pill">商品名 <input type="text" class="product-name" value="" placeholder="空欄で自動設定"></span>
+              <span class="pill">当選人数 <input type="number" class="product-winners" value="1" min="1"></span>
+              <button type="button" class="btn ghost remove-product" style="display:none;">削除</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-row" style="margin-top:8px;">
+          <button id="btnAddProduct" class="btn ghost">+ 商品を追加</button>
+        </div>
+      </div>
+      
+      <div class="form-row" style="margin-top:16px">
+        <button id="btnPreview" class="btn secondary">確率を計算</button>
+        <button id="btnDraw" class="btn primary">抽選する</button>
+      </div>
+      <div class="statsbar">
+        <div id="statsLeft">候補 0 名</div>
+        <div id="statsRight">総ポイント 0.00</div>
+      </div>
+      <div class="table-scroll" id="tableWrap"></div>
+
+  </div>
+
+  <!-- Results Modal -->
+  <div class="results-overlay" id="resultsOverlay"></div>
+  <div class="results" id="resultsPanel" role="dialog" aria-modal="true" aria-labelledby="resultsTitle">
+    <button class="close-btn" id="closeResults" aria-label="閉じる">×</button>
+    <div class="results-header">
+      <div class="results-title" id="resultsTitle">🎉 当選 0 名 🎉</div>
+    </div>
+    <div class="result-badges" id="winnersBadges"></div>
+    </div>
+  </div>
+
+  <!-- Copy Actions (outside modal) -->
+  <div class="copy-actions">
+    <button id="btnCopyNames" class="copy-btn primary">
+      📋
+      <span class="btn-text">名前をコピー</span>
+    </button>
+    <button id="btnCopyCSV" class="copy-btn secondary">
+      📊
+      <span class="btn-text">CSVをコピー</span>
+    </button>
+  </div>
+
+<script>
+(function(){
+  // i18n setup
+  function detectLang(){
+    try{
+      const list = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''];
+      return list.some(l => String(l||'').toLowerCase().startsWith('ja')) ? 'ja' : 'en';
+    }catch(e){ return 'ja'; }
+  }
+  const lang = detectLang();
+  const i18n = {
+    ja: {
+      app_title: 'ポイント制 抽選ツール',
+      btn_format: '🧹 整形', btn_save: '💾 保存', btn_reset: '🔄 リセット',
+      theme_light: '☀️ ライト', theme_dark: '🌙 ダーク',
+      menu_format: '🧹 整形ツール', menu_save: '💾 保存', menu_reset: '🔄 リセット',
+      menu_theme_to_dark: '🌙 ダークに切替', menu_theme_to_light: '☀️ ライトに切替',
+      list_a: 'リスト A', list_b: 'リスト B', list_c: 'リスト C', exclude_list: '除外リスト',
+      placeholder_list: '1行に1名を貼り付け', placeholder_exclude: '対象外の名前（1行に1名）',
+      points_label: 'ポイント', min_points: '最小ポイント',
+      add_product: '+ 商品を追加', product_name: '商品名', winners: '当選人数', remove: '削除',
+      calc_prob: '確率を計算', draw: '抽選する',
+      stats_candidates: '候補', stats_totalpoints: '総ポイント',
+      table_name: '名前', table_points: 'ポイント', table_prob: '当選確率(%)',
+      copy_names: '名前をコピー', copy_csv: 'CSVをコピー',
+      adv_show: '＋ 追加のリスト/除外を表示', adv_hide: '− 追加のリスト/除外を隠す',
+      results_title_zero: '🎉 当選 0 名', lines_unit: ' 行'
+    },
+    en: {
+      app_title: 'Weighted Lottery Tool',
+      btn_format: '🧹 Format', btn_save: '💾 Save', btn_reset: '🔄 Reset',
+      theme_light: '☀️ Light', theme_dark: '🌙 Dark',
+      menu_format: '🧹 Formatter', menu_save: '💾 Save', menu_reset: '🔄 Reset',
+      menu_theme_to_dark: '🌙 Switch to Dark', menu_theme_to_light: '☀️ Switch to Light',
+      list_a: 'List A', list_b: 'List B', list_c: 'List C', exclude_list: 'Exclude List',
+      placeholder_list: 'Paste one name per line', placeholder_exclude: 'Names to exclude (one per line)',
+      points_label: 'Points', min_points: 'Min Points',
+      add_product: '+ Add Product', product_name: 'Product', winners: 'Winners', remove: 'Remove',
+      calc_prob: 'Compute Probabilities', draw: 'Draw',
+      stats_candidates: 'Candidates', stats_totalpoints: 'Total Points',
+      table_name: 'Name', table_points: 'Points', table_prob: 'Win Prob. (%)',
+      copy_names: 'Copy Names', copy_csv: 'Copy CSV',
+      adv_show: '+ Show extra lists/exclude', adv_hide: '− Hide extra lists/exclude',
+      results_title_zero: '🎉 Winners 0', lines_unit: ' lines'
+    }
+  };
+  function t(key){ return (i18n[lang] && i18n[lang][key]) || (i18n.ja && i18n.ja[key]) || key; }
+  function applyI18n(){
+    if(lang === 'ja') return; // default already JA
+    try{ document.title = t('app_title'); }catch(e){}
+    const titleEl = document.querySelector('.title'); if(titleEl) titleEl.textContent = t('app_title');
+    const btnFormatEl = document.getElementById('btnFormat'); if(btnFormatEl) btnFormatEl.textContent = t('btn_format');
+    const btnSaveEl = document.getElementById('btnSave'); if(btnSaveEl) btnSaveEl.textContent = t('btn_save');
+    const btnResetEl = document.getElementById('btnReset'); if(btnResetEl) btnResetEl.textContent = t('btn_reset');
+    const btnMenuEl = document.getElementById('menuDropdown'); if(btnMenuEl){
+      const items = btnMenuEl.querySelectorAll('.menu-item');
+      items.forEach(it => {
+        const action = it.getAttribute('data-action');
+        if(action==='format') it.textContent = t('menu_format');
+        if(action==='save') it.textContent = t('menu_save');
+        if(action==='reset') it.textContent = t('menu_reset');
+        if(action==='theme') it.textContent = t('menu_theme_to_dark');
+      });
+    }
+    const toggleAdvancedBtn = document.getElementById('toggleAdvanced');
+    if(toggleAdvancedBtn){ toggleAdvancedBtn.textContent = t('adv_show'); }
+    const btnAddProductEl = document.getElementById('btnAddProduct'); if(btnAddProductEl) btnAddProductEl.textContent = t('add_product');
+    const btnPrev = document.getElementById('btnPreview'); if(btnPrev) btnPrev.textContent = t('calc_prob');
+    const btnDraw = document.getElementById('btnDraw'); if(btnDraw) btnDraw.textContent = t('draw');
+    const btnCopyNamesEl = document.getElementById('btnCopyNames'); if(btnCopyNamesEl) btnCopyNamesEl.querySelector('.btn-text').textContent = t('copy_names');
+    const btnCopyCSVEl = document.getElementById('btnCopyCSV'); if(btnCopyCSVEl) btnCopyCSVEl.querySelector('.btn-text').textContent = t('copy_csv');
+    const listAEl = document.getElementById('listA'); if(listAEl) listAEl.placeholder = t('placeholder_list');
+    const listBEl = document.getElementById('listB'); if(listBEl) listBEl.placeholder = t('placeholder_list');
+    const listCEl = document.getElementById('listC'); if(listCEl) listCEl.placeholder = t('placeholder_list');
+    const exEl = document.getElementById('exclude'); if(exEl) exEl.placeholder = t('placeholder_exclude');
+    const resultsTitle = document.getElementById('resultsTitle'); if(resultsTitle) resultsTitle.textContent = t('results_title_zero');
+    // List headings
+    const hA = document.querySelector('#cardA h3 span'); if(hA && hA.firstChild) hA.firstChild.nodeValue = t('list_a') + ' ';
+    const hB = document.querySelector('#cardB h3 span'); if(hB && hB.firstChild) hB.firstChild.nodeValue = t('list_b') + ' ';
+    const hC = document.querySelector('#cardC h3 span'); if(hC && hC.firstChild) hC.firstChild.nodeValue = t('list_c') + ' ';
+    const hE = document.querySelector('#cardExclude h3 span'); if(hE && hE.firstChild) hE.firstChild.nodeValue = t('exclude_list') + ' ';
+    // Min points label
+    const mp = document.getElementById('minPoints'); if(mp && mp.parentElement && mp.parentElement.classList.contains('pill')){ mp.parentElement.childNodes[0].nodeValue = t('min_points') + ' '; }
+    // Product labels (existing ones)
+    document.querySelectorAll('.product-item .form-row').forEach(row => {
+      const pills = row.querySelectorAll('.pill');
+      if(pills[0]) pills[0].childNodes[0].nodeValue = t('product_name') + ' ';
+      if(pills[1]) pills[1].childNodes[0].nodeValue = t('winners') + ' ';
+      const rem = row.querySelector('.remove-product'); if(rem) rem.textContent = t('remove');
+      const name = row.querySelector('.product-name'); if(name && name.placeholder) name.placeholder = 'Auto';
+    });
+  }
+  const $ = id => document.getElementById(id);
+  const listA = $("listA"), listB = $("listB"), listC = $("listC");
+  const pointsA = $("pointsA"), pointsB = $("pointsB"), pointsC = $("pointsC");
+  const exclude = $("exclude");
+  const minPoints = $("minPoints");
+  const productsContainer = $("productsContainer"), btnAddProduct = $("btnAddProduct");
+  const statsLeft = $("statsLeft"), statsRight = $("statsRight"), tableWrap = $("tableWrap");
+  const resultsPanel = $("resultsPanel"), resultsOverlay = $("resultsOverlay"), winnersBadges = $("winnersBadges"), resultsTitle = $("resultsTitle");
+  const btnCopyNames = $("btnCopyNames"), btnCopyCSV = $("btnCopyCSV");
+  const btnTheme = $("btnTheme"), closeResults = $("closeResults"), btnSave = $("btnSave"), btnReset = $("btnReset");
+  const copyHint = $("copyHint");
+
+  let pool = new Map();
+  let lastWinners = [];
+  let confettiContainer = null;
+  let confettiInterval = null;
+  let productIndex = 1;
+  let resultsResizeObserver = null;
+  const CONFETTI_ENABLED = false; // 紙吹雪の演出を一時的に無効化
+
+  function parseList(txt){
+    if(!txt) return [];
+    return txt.split(/\r?\n|\r/).map(s=>s.trim()).filter(Boolean);
+  }
+
+  function normalize(s){
+    try { return s.trim().normalize('NFKC').toLowerCase(); }
+    catch (e) { return s.trim().toLowerCase(); }
+  }
+
+  function buildPool(){
+    pool.clear();
+    const excludes = new Set(parseList(exclude.value).map(normalize));
+    const lists = [
+      { rows: parseList(listA.value), p: parseFloat(pointsA.value)||0 },
+      { rows: parseList(listB.value), p: parseFloat(pointsB.value)||0 },
+      { rows: parseList(listC.value), p: parseFloat(pointsC.value)||0 }
+    ];
+    for(const {rows,p} of lists){
+      const seen = new Set();
+      for(const raw of rows){
+        const key = normalize(raw);
+        if(!key || excludes.has(key)) continue;
+        if(seen.has(key)) continue;
+        seen.add(key);
+        const cur = pool.get(key) || { name: raw.trim(), points: 0 };
+        cur.points += p;
+        if(raw.trim().length > cur.name.length) cur.name = raw.trim();
+        pool.set(key, cur);
+      }
+    }
+    const min = parseFloat(minPoints.value)||0;
+    if(min > 0){
+      for(const [k,v] of pool){ if(v.points < min) pool.delete(k); }
+    }
+  }
+
+  function totals(){
+    let total = 0; pool.forEach(v=> total += v.points); return total;
+  }
+
+  function renderTable(){
+    const totalPts = totals();
+    const rows = [...pool.values()].sort((a,b)=> b.points - a.points);
+    statsLeft.textContent = `${t('stats_candidates')} ${rows.length}` + (lang==='ja' ? ' 名' : '');
+    statsRight.textContent = `${t('stats_totalpoints')} ${totalPts.toFixed(2)}`;
+    if(rows.length === 0){ tableWrap.innerHTML = ''; return; }
+    const html = `
+      <table>
+        <thead><tr><th>${t('table_name')}</th><th class="mono">${t('table_points')}</th><th class="mono">${t('table_prob')}</th></tr></thead>
+        <tbody>
+          ${rows.map(r=>`<tr><td>${escapeHtml(r.name)}</td><td class="mono">${r.points.toFixed(2)}</td><td class="mono">${totalPts? (r.points/totalPts*100).toFixed(2):'0.00'}</td></tr>`).join('')}
+        </tbody>
+      </table>`;
+    tableWrap.innerHTML = html;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m]));
+  }
+
+
+  function getRandom(){
+    // 新しいブラウザ: crypto.getRandomValues使用
+    if(window.crypto && window.crypto.getRandomValues){
+      try {
+        const arr = new Uint32Array(2); 
+        window.crypto.getRandomValues(arr);
+        const a = arr[0]>>>5, b = arr[1]>>>6; 
+        return (a*67108864 + b) / 9007199254740992;
+      } catch(e) {
+        console.warn('暗号化乱数生成失敗:', e);
+      }
+    }
+    // フォールバック: Math.random()
+    return Math.random();
+  }
+
+  function weightedPick(arr){
+    const total = arr.reduce((s,e)=> s + e.points, 0);
+    if(total <= 0) return null;
+    let r = getRandom() * total;
+    for(const e of arr){ if((r -= e.points) <= 0) return e; }
+    return arr[arr.length-1] || null;
+  }
+
+  function preview(){
+    buildPool();
+    renderTable();
+  }
+
+  function getProducts(){
+    const products = [];
+    document.querySelectorAll('.product-item').forEach((item, index) => {
+      const rawName = item.querySelector('.product-name').value;
+      // 特殊文字、制御文字を除去して正規化
+      const name = rawName
+        .replace(/[\u0000-\u001F\u007F-\u009F\u2000-\u200F\u2028-\u202F\u205F-\u206F\uFEFF]/g, '')
+        .trim()
+        .slice(0, 50); // 最大50文字まで
+      const winners = Math.max(1, Math.min(1000, parseInt(item.querySelector('.product-winners').value) || 1)); // 1-1000の範囲
+      const productName = name || (winners === 1 ? `${index + 1}等` : `${index + 1}等 (${winners}名)`);
+      products.push({name: productName, winners});
+    });
+    return products.length > 0 ? products : [{name: '1等', winners: 1}];
+  }
+
+  function draw(){
+    buildPool();
+    const arr = [...pool.values()].filter(e=>e.points>0);
+    if(arr.length === 0){
+      alert('抽選対象者がいません');
+      return;
+    }
+    
+    const products = getProducts();
+    const allWinners = [];
+    const availableCandidates = [...arr];
+    
+    for(const product of products){
+      const productWinners = [];
+      for(let i = 0; i < product.winners; i++){
+        if(availableCandidates.length === 0) break;
+        const winner = weightedPick(availableCandidates);
+        if(!winner) break;
+        
+        productWinners.push(winner);
+        const idx = availableCandidates.findIndex(e=> normalize(e.name) === normalize(winner.name));
+        if(idx >= 0) availableCandidates.splice(idx, 1);
+      }
+      if(productWinners.length > 0){
+        allWinners.push({
+          product: product.name,
+          winners: productWinners
+        });
+      }
+    }
+    
+    lastWinners = allWinners;
+    showResultsWithAnimation();
+    renderTable();
+  }
+
+  function updateResults(){
+    if(!lastWinners || lastWinners.length === 0){
+      resultsTitle.textContent = '😅 当選なし';
+      winnersBadges.innerHTML = '<span class="badge">今回は当選者がいませんでした</span>';
+      return;
+    }
+    
+    // 商品別結果の場合
+    if(lastWinners[0] && lastWinners[0].product){
+      const totalWinners = lastWinners.reduce((sum, p) => sum + p.winners.length, 0);
+      resultsTitle.textContent = `🎉 当選 ${totalWinners} 名 🎉`;
+      
+      let badgesHtml = '';
+      lastWinners.forEach(productResult => {
+        badgesHtml += `<div style="margin-bottom:16px;"><h4 style="margin:0 0 8px;color:white;font-size:16px;">${escapeHtml(productResult.product)}</h4>`;
+        badgesHtml += productResult.winners.map(winner => `<span class="badge">${escapeHtml(winner.name)}</span>`).join(' ');
+        badgesHtml += '</div>';
+      });
+      winnersBadges.innerHTML = badgesHtml;
+      
+      // コピー用データ
+      const names = lastWinners.map(p => 
+        `${p.product}:\n${p.winners.map(w => w.name).join('\n')}`
+      ).join('\n\n');
+      
+      const csv = 'product,name,points\n' + lastWinners.map(p => 
+        p.winners.map(w => `${csvq(p.product)},${csvq(w.name)},${w.points}`).join('\n')
+      ).join('\n');
+      
+      btnCopyNames.onclick = () => doCopy(names, '✅ 名前をコピーしました');
+      btnCopyCSV.onclick = () => doCopy(csv, '✅ CSVをコピーしました');
+    }
+    // 従来の単純結果の場合
+    else {
+      const n = lastWinners.length;
+      resultsTitle.textContent = n > 0 ? `🎉 当選 ${n} 名` : '😅 当選なし';
+      winnersBadges.innerHTML = n ? lastWinners.map(p=>`<span class="badge">${escapeHtml(p.name)}</span>`).join('') : '<span class="badge">今回は当選者がいませんでした</span>';
+      const names = lastWinners.map(p=>p.name).join("\n");
+      const csv = 'name,points\n' + lastWinners.map(p=>`${csvq(p.name)},${p.points}`).join("\n");
+      btnCopyNames.onclick = () => doCopy(names, '✅ 名前をコピーしました');
+      btnCopyCSV.onclick = () => doCopy(csv, '✅ CSVをコピーしました');
+    }
+  }
+
+  function showResultsModal(){
+    resultsOverlay.classList.add('show');
+    resultsPanel.classList.add('show');
+    document.body.style.overflow = 'hidden';
+    // コピーボタン表示 & 初期配置
+    const copyActions = document.querySelector('.copy-actions');
+    if(copyActions){
+      copyActions.classList.add('show');
+      updateCopyActionsMode();
+      positionCopyActions();
+      requestAnimationFrame(() => {
+        positionCopyActions();
+        updateCopyActionsViewportOffset();
+      });
+    }
+    // モーダルにフォーカスを移動（トラップ開始）
+    startModalFocusTrap();
+    // リサイズ監視（バッジ増減で高さ変化）
+    if(window.ResizeObserver && !resultsResizeObserver){
+      resultsResizeObserver = new ResizeObserver(() => positionCopyActions());
+      resultsResizeObserver.observe(resultsPanel);
+      const badges = document.getElementById('winnersBadges');
+      if(badges) resultsResizeObserver.observe(badges);
+    }
+  }
+
+  // モーダルを閉じる（以前の実装が削除され参照エラーになっていたため再追加）
+  function hideResultsModal(){
+    resultsOverlay.classList.remove('show');
+    resultsPanel.classList.remove('show');
+    document.body.style.overflow = 'auto';
+    const copyActions = document.querySelector('.copy-actions');
+    if(copyActions){
+      copyActions.classList.remove('show');
+      copyActions.style.bottom = '';
+    }
+    if(resultsResizeObserver){
+      try{ resultsResizeObserver.disconnect(); }catch(e){}
+      resultsResizeObserver = null;
+    }
+    stopConfetti();
+    stopModalFocusTrap();
+  }
+
+  function showResultsWithAnimation(){
+    // 結果モーダル表示
+    showResultsModal();
+    updateResults();
+    // 内容確定後に再度位置調整
+    setTimeout(positionCopyActions, 0);
+    
+    // 当選者がいる場合の演出
+    if(CONFETTI_ENABLED && lastWinners.length > 0 && !prefersReducedMotion()){
+      startContinuousConfetti();
+    }
+    
+    // 成功パルス効果
+    if(!prefersReducedMotion()){
+      resultsPanel.classList.add('success-pulse');
+      setTimeout(() => resultsPanel.classList.remove('success-pulse'), 800);
+      // CSS-only celebrate effect (glow + radial flash)
+      resultsPanel.classList.add('celebrate');
+      setTimeout(() => resultsPanel.classList.remove('celebrate'), 900);
+      // タイトル演出は無効化
+    }
+  }
+  
+  // モーダルの近くにコピーボタンを配置（モーダル幅いっぱいで中央寄せ）
+  function positionCopyActions(){
+    const actions = document.querySelector('.copy-actions');
+    if(!actions || !actions.classList.contains('show')) return;
+    // モバイルはCSSで固定ボトムにする
+    if(window.innerWidth <= 600){
+      return;
+    }
+    const panelRect = resultsPanel.getBoundingClientRect();
+    // モーダル幅を適用
+    actions.style.width = panelRect.width + 'px';
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const s = 16; // 余白
+    let left = panelRect.left;
+    let top = panelRect.bottom + s;
+    actions.style.left = Math.round(left) + 'px';
+    actions.style.top = Math.round(top) + 'px';
+    // 上に逃がす判定（スペース不足）
+    const aRect = actions.getBoundingClientRect();
+    if(top + aRect.height > vh - s){
+      const newTop = panelRect.top - aRect.height - s;
+      if(newTop >= s){
+        actions.style.top = Math.round(newTop) + 'px';
+      }
+    }
+    // 横はみ出し調整
+    const afterRect = actions.getBoundingClientRect();
+    if(afterRect.left < s){
+      actions.style.left = s + 'px';
+      actions.style.width = Math.min(panelRect.width, vw - s*2) + 'px';
+    } else if(afterRect.right > vw - s){
+      actions.style.left = Math.max(s, vw - afterRect.width - s) + 'px';
+      actions.style.width = Math.min(panelRect.width, vw - s*2) + 'px';
+    }
+  }
+
+  // リサイズ時にも追従
+  window.addEventListener('resize', () => {
+    updateCopyActionsMode();
+    positionCopyActions();
+    updateCopyActionsViewportOffset();
+  });
+
+  // 画面幅に応じてコピー操作の配置を切替
+  function updateCopyActionsMode(){
+    const actions = document.querySelector('.copy-actions');
+    if(!actions) return;
+    const small = window.innerWidth <= 600;
+    if(small){
+      actions.classList.add('bottom');
+      actions.classList.remove('below');
+    } else {
+      actions.classList.remove('bottom');
+      actions.classList.add('below');
+    }
+  }
+
+  // モバイルでキーボード出現時にボトムが隠れないよう補正
+  function updateCopyActionsViewportOffset(){
+    const actions = document.querySelector('.copy-actions');
+    if(!actions) return;
+    if(!(window.innerWidth <= 600)){
+      actions.style.bottom = '';
+      return;
+    }
+    try{
+      if(window.visualViewport){
+        const vv = window.visualViewport;
+        const offset = Math.max(0, (window.innerHeight - vv.height - vv.offsetTop));
+        const base = 12; // CSS側のベース余白(px)
+        actions.style.bottom = (offset > 0) ? (base + offset) + 'px' : '';
+      } else {
+        actions.style.bottom = '';
+      }
+    } catch(e) {
+      actions.style.bottom = '';
+    }
+  }
+
+  // iOS等でのソフトキーボード表示に追従
+  try{
+    if(window.visualViewport){
+      visualViewport.addEventListener('resize', updateCopyActionsViewportOffset);
+      visualViewport.addEventListener('scroll', updateCopyActionsViewportOffset);
+    }
+  }catch(e){}
+
+  // モーダルのフォーカストラップ
+  let lastFocusedBeforeModal = null;
+  let focusTrapHandler = null;
+  function startModalFocusTrap(){
+    try{ lastFocusedBeforeModal = document.activeElement; }catch(e){ lastFocusedBeforeModal = null; }
+    // 初期フォーカスを閉じるボタンへ
+    try{ if(closeResults) closeResults.focus(); }catch(e){}
+    const selector = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
+    focusTrapHandler = function(e){
+      if(e.key !== 'Tab') return;
+      const nodes = Array.from(resultsPanel.querySelectorAll(selector)).filter(el=>el.offsetParent !== null || el === document.activeElement);
+      if(nodes.length === 0) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      if(e.shiftKey){
+        if(document.activeElement === first){ e.preventDefault(); last.focus(); }
+      } else {
+        if(document.activeElement === last){ e.preventDefault(); first.focus(); }
+      }
+    };
+    document.addEventListener('keydown', focusTrapHandler);
+  }
+  function stopModalFocusTrap(){
+    if(focusTrapHandler){
+      document.removeEventListener('keydown', focusTrapHandler);
+      focusTrapHandler = null;
+    }
+    // モーダルを閉じたら元の要素へフォーカス返却
+    if(lastFocusedBeforeModal && typeof lastFocusedBeforeModal.focus === 'function' && document.contains(lastFocusedBeforeModal)){
+      try{ lastFocusedBeforeModal.focus(); }catch(e){}
+    }
+    lastFocusedBeforeModal = null;
+  }
+  
+
+  function createSuperConfetti(){
+    if(prefersReducedMotion()) return; // 動きの少ない設定
+    const confettiContainer = document.createElement('div');
+    confettiContainer.style.position = 'fixed';
+    confettiContainer.style.top = '0';
+    confettiContainer.style.left = '0';
+    confettiContainer.style.width = '100vw';
+    confettiContainer.style.height = '100vh';
+    confettiContainer.style.pointerEvents = 'none';
+    confettiContainer.style.zIndex = '1500';
+    
+    const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#f0932b', '#eb4d4b', '#6c5ce7', '#fd79a8', '#00b894', '#e17055', '#00cec9', '#a29bfe', '#fd79a8', '#fdcb6e', '#e84393'];
+    const shapes = ['rect', 'circle', 'triangle'];
+    
+    // 大量のコンフェッティを作成（150個）
+    for(let i = 0; i < 150; i++){
+      const confetti = document.createElement('div');
+      const shape = shapes[Math.floor(Math.random() * shapes.length)];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      
+      confetti.className = `confetti ${shape}`;
+      confetti.style.left = Math.random() * 100 + 'vw';
+      confetti.style.top = '-50px';
+      confetti.style.animationDelay = Math.random() * 2 + 's';
+      confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
+      
+      if(shape === 'triangle'){
+        confetti.style.borderBottomColor = color;
+      } else {
+        confetti.style.backgroundColor = color;
+      }
+      
+      // ランダムなサイズ
+      const scale = Math.random() * 0.8 + 0.5;
+      confetti.style.transform = `scale(${scale})`;
+      
+      confettiContainer.appendChild(confetti);
+    }
+    
+    // さらに大きな特別なパーティクルを追加
+    for(let i = 0; i < 30; i++){
+      const bigConfetti = document.createElement('div');
+      bigConfetti.className = 'confetti rect';
+      bigConfetti.style.left = Math.random() * 100 + 'vw';
+      bigConfetti.style.top = '-30px';
+      bigConfetti.style.width = (Math.random() * 20 + 15) + 'px';
+      bigConfetti.style.height = (Math.random() * 15 + 10) + 'px';
+      bigConfetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      bigConfetti.style.animationDelay = Math.random() * 1 + 's';
+      bigConfetti.style.animationDuration = (Math.random() * 4 + 3) + 's';
+      confettiContainer.appendChild(bigConfetti);
+    }
+    
+    document.body.appendChild(confettiContainer);
+    
+    // 継続的にコンフェッティを追加（3波）
+    const addMoreConfetti = (delay, amount) => {
+      setTimeout(() => {
+        for(let i = 0; i < amount; i++){
+          const confetti = document.createElement('div');
+          const shape = shapes[Math.floor(Math.random() * shapes.length)];
+          const color = colors[Math.floor(Math.random() * colors.length)];
+          
+          confetti.className = `confetti ${shape}`;
+          confetti.style.left = Math.random() * 100 + 'vw';
+          confetti.style.top = '-50px';
+      confetti.style.top = '-50px';
+          confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+          
+          if(shape === 'triangle'){
+            confetti.style.borderBottomColor = color;
+          } else {
+            confetti.style.backgroundColor = color;
+          }
+          
+          confettiContainer.appendChild(confetti);
+        }
+      }, delay);
+    };
+    
+    addMoreConfetti(1000, 50);  // 1秒後に50個
+    addMoreConfetti(2000, 30);  // 2秒後に30個
+    addMoreConfetti(3000, 20);  // 3秒後に20個
+    
+    setTimeout(() => {
+      document.body.removeChild(confettiContainer);
+    }, 8000);  // 8秒間表示
+  }
+
+  function startContinuousConfetti(){
+    if(prefersReducedMotion()) return; // 動きの少ない設定
+    // 既存の紙吹雪を停止
+    stopConfetti();
+    
+    // コンテナを作成
+    confettiContainer = document.createElement('div');
+    confettiContainer.style.position = 'fixed';
+    confettiContainer.style.top = '0';
+    confettiContainer.style.left = '0';
+    confettiContainer.style.width = '100vw';
+    confettiContainer.style.height = '100vh';
+    confettiContainer.style.pointerEvents = 'none';
+    confettiContainer.style.zIndex = '1500';
+    document.body.appendChild(confettiContainer);
+    
+    const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#f0932b', '#eb4d4b', '#6c5ce7', '#fd79a8', '#00b894', '#e17055', '#00cec9', '#a29bfe', '#fd79a8', '#fdcb6e', '#e84393'];
+    const shapes = ['rect', 'circle', 'triangle'];
+    
+    // 初回の適度な投下（ロースペック考慮）
+    createConfettiBatch(40, colors, shapes);
+    
+    // 継続的に少量ずつ追加（頻度を下げる）
+    confettiInterval = setInterval(() => {
+      createConfettiBatch(6, colors, shapes);
+    }, 1200);
+  }
+  
+  function createConfettiBatch(count, colors, shapes){
+    if(!confettiContainer) return;
+    
+    for(let i = 0; i < count; i++){
+      const confetti = document.createElement('div');
+      const shape = shapes[Math.floor(Math.random() * shapes.length)];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      
+      confetti.className = `confetti ${shape}`;
+      confetti.style.left = Math.random() * 100 + 'vw';
+      confetti.style.top = '-50px';
+      confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
+      
+      if(shape === 'triangle'){
+        confetti.style.borderBottomColor = color;
+      } else {
+        confetti.style.backgroundColor = color;
+      }
+      
+      // ランダムなサイズ
+      const scale = Math.random() * 0.8 + 0.5;
+      confetti.style.transform = `scale(${scale})`;
+      
+      confettiContainer.appendChild(confetti);
+      
+      // アニメーション終了後に要素を削除（短縮）
+      setTimeout(() => {
+        if(confetti && confetti.parentNode){
+          confetti.parentNode.removeChild(confetti);
+        }
+      }, 4000);
+    }
+  }
+  
+  function stopConfetti(){
+    // インターバルを停止
+    if(confettiInterval){
+      clearInterval(confettiInterval);
+      confettiInterval = null;
+    }
+    
+    // コンテナを削除
+    if(confettiContainer && confettiContainer.parentNode){
+      confettiContainer.parentNode.removeChild(confettiContainer);
+      confettiContainer = null;
+    }
+  }
+
+  function csvq(s){ return '"'+String(s).replace(/"/g,'""')+'"'; }
+  function prefersReducedMotion(){
+    try { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+    catch(e){ return false; }
+  }
+  async function doCopy(text, okMsg){
+    console.log('コピーするテキスト:', text);
+    try{
+      await navigator.clipboard.writeText(text);
+      console.log('Clipboard API成功');
+      toast(okMsg);
+    }catch (e){
+      console.log('Clipboard API失敗、フォールバック使用:', e);
+      // フォールバック: 一時的な非表示テキストエリアを作成
+      const tempTextArea = document.createElement('textarea');
+      tempTextArea.value = text;
+      tempTextArea.style.position = 'fixed';
+      tempTextArea.style.left = '-999999px';
+      tempTextArea.style.top = '-999999px';
+      document.body.appendChild(tempTextArea);
+      tempTextArea.focus();
+      tempTextArea.select();
+      // 新しいAPIでコピーを試行
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(() => {
+          toast(okMsg);
+        }).catch(() => {
+          // フォールバックで古い方法
+          document.execCommand('copy');
+          toast(okMsg);
+        });
+        document.body.removeChild(tempTextArea);
+        return;
+      }
+      // 古いブラウザ用フォールバック
+      try {
+        document.execCommand('copy');
+        toast(okMsg);
+      } catch(e) {
+        toast('コピーに失敗しました');
+      }
+      document.body.removeChild(tempTextArea);
+    }
+  }
+
+  function toast(msg){
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.setAttribute('role','status');
+    t.setAttribute('aria-live','polite');
+    t.style.position='fixed';t.style.right='16px';t.style.bottom='16px';
+    t.style.padding='10px 14px';t.style.border='1px solid var(--border)';t.style.background='var(--panel-soft)';t.style.borderRadius='10px';
+    t.style.boxShadow='var(--shadow)';t.style.opacity='0';t.style.transition='all .25s ease';
+    document.body.appendChild(t);
+    requestAnimationFrame(()=>{t.style.opacity='1';t.style.transform='translateY(-4px)'});
+    setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(0)';setTimeout(()=>t.remove(),250);},1200);
+  }
+
+  function applyTheme(theme){
+    document.documentElement.setAttribute('data-theme', theme);
+    if(btnTheme) btnTheme.textContent = theme === 'light' ? t('theme_light') : t('theme_dark');
+    localStorage.setItem('lottery_theme', theme);
+  }
+  function initTheme(){
+    const saved = localStorage.getItem('lottery_theme');
+    const theme = saved || 'light';
+    applyTheme(theme);
+  }
+  btnTheme.addEventListener('click', ()=>{
+    const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+    applyTheme(cur === 'dark' ? 'light' : 'dark');
+  });
+
+  $("btnPreview").onclick = preview;
+  $("btnDraw").onclick = draw;
+  
+  // Modal events
+  closeResults.onclick = hideResultsModal;
+  resultsOverlay.onclick = hideResultsModal;
+
+  // Save & Reset events
+  if(btnSave){
+    btnSave.addEventListener('click', (e)=>{
+      try {
+        saveData();
+        // 視覚的フィードバック（点滅）
+        btnSave.classList.add('saving');
+        setTimeout(()=> btnSave.classList.remove('saving'), 500);
+      } catch(err){
+        console.error('saveData error', err);
+        toast('❌ 保存エラー (Console参照)');
+      }
+    });
+  } else {
+    console.warn('#btnSave が見つかりません');
+  }
+  btnReset.onclick = resetData;
+  
+  // Product management
+  btnAddProduct.onclick = addProduct;
+
+  // Advanced section toggle
+  const advancedSection = document.getElementById('advancedSection');
+  const toggleAdvancedBtn = document.getElementById('toggleAdvanced');
+  function setAdvancedOpen(open){
+    if(!advancedSection || !toggleAdvancedBtn) return;
+    advancedSection.hidden = !open;
+    toggleAdvancedBtn.textContent = open ? t('adv_hide') : t('adv_show');
+    localStorage.setItem('lottery_adv_open', open ? '1' : '0');
+  }
+  if(toggleAdvancedBtn){
+    toggleAdvancedBtn.addEventListener('click', ()=>{
+      setAdvancedOpen(advancedSection.hidden);
+    });
+  }
+
+  // Mobile menu
+  const btnMenu = document.getElementById('btnMenu');
+  const menuDropdown = document.getElementById('menuDropdown');
+  const menuTheme = document.getElementById('menuTheme');
+  const btnFormat = document.getElementById('btnFormat');
+  
+  function updateMenuThemeText(){
+    const theme = document.documentElement.getAttribute('data-theme') || 'light';
+    menuTheme.textContent = theme === 'light' ? t('menu_theme_to_dark') : t('menu_theme_to_light');
+  }
+  
+  function openMenu(){
+    if(!menuDropdown) return;
+    menuDropdown.hidden = false;
+    btnMenu.setAttribute('aria-expanded', 'true');
+    updateMenuThemeText();
+    // クリック外しで閉じる
+    setTimeout(() => {
+      document.addEventListener('click', onDocClick);
+    }, 0);
+  }
+  function closeMenu(){
+    if(!menuDropdown) return;
+    menuDropdown.hidden = true;
+    btnMenu.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('click', onDocClick);
+  }
+  function toggleMenu(){
+    if(menuDropdown.hidden){ openMenu(); } else { closeMenu(); }
+  }
+  function onDocClick(e){
+    if(!menuDropdown.contains(e.target) && e.target !== btnMenu){
+      closeMenu();
+    }
+  }
+  if(btnMenu){ btnMenu.addEventListener('click', (e)=>{ e.stopPropagation(); toggleMenu(); }); }
+  if(menuDropdown){
+    menuDropdown.addEventListener('click', (e)=>{
+      const t = e.target.closest('.menu-item');
+      if(!t) return;
+      const action = t.getAttribute('data-action');
+      if(action === 'save') saveData();
+      if(action === 'reset') resetData();
+      if(action === 'format') openFormatter();
+      if(action === 'theme'){
+        const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+        applyTheme(cur === 'dark' ? 'light' : 'dark');
+      }
+      closeMenu();
+    });
+  }
+
+  // Formatter tool
+  function openFormatter(){
+    const ov = document.getElementById('formatOverlay');
+    if(!ov) return;
+    ov.classList.add('show');
+    updateFormatCount();
+    // 外側クリックで閉じる（初回だけバインド）
+    if(!ov.dataset.bound){
+      ov.addEventListener('click', (e)=>{ if(e.target === ov) closeFormatter(); });
+      ov.dataset.bound = '1';
+    }
+    // ESCで閉じる（開いている間だけ有効）
+    const onKey = (e)=>{
+      if(e.key === 'Escape'){
+        closeFormatter();
+        document.removeEventListener('keydown', onKey);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+  }
+  function closeFormatter(){
+    const ov = document.getElementById('formatOverlay');
+    if(!ov) return;
+    ov.classList.remove('show');
+  }
+  if(btnFormat){ btnFormat.addEventListener('click', openFormatter); }
+  const btnFormatInline = document.getElementById('btnFormatInline');
+  const btnFormatInlineB = document.getElementById('btnFormatInlineB');
+  const btnFormatInlineC = document.getElementById('btnFormatInlineC');
+  if(btnFormatInline){ btnFormatInline.addEventListener('click', () => formatListInline('listA', 'リストA')); }
+  if(btnFormatInlineB){ btnFormatInlineB.addEventListener('click', () => formatListInline('listB', 'リストB')); }
+  if(btnFormatInlineC){ btnFormatInlineC.addEventListener('click', () => formatListInline('listC', 'リストC')); }
+  
+  function extractAtLines(){
+    const input = document.getElementById('formatInput');
+    const output = document.getElementById('formatOutput');
+    const dedupe = document.getElementById('formatDedupe');
+    if(!input || !output) return;
+    const lines = String(input.value || '').split(/\r?\n|\r/);
+    const kept = [];
+    const seen = new Set();
+    for(const raw of lines){
+      const s = raw.trim();
+      if(!s) continue;
+      if(s.startsWith('@')){
+        if(dedupe && dedupe.checked){
+          if(seen.has(s)) continue;
+          seen.add(s);
+        }
+        kept.push(s);
+      }
+    }
+    output.value = kept.join('\n');
+    updateFormatCount();
+    toast(`＠始まり ${kept.length} 件`);
+  }
+  function copyFormatted(){
+    const output = document.getElementById('formatOutput');
+    if(!output) return;
+    doCopy(output.value || '', '✅ 整形結果をコピーしました');
+  }
+  // グローバルに公開（インラインonclickから呼べるように）
+  window.extractAtLines = extractAtLines;
+  window.copyFormatted = copyFormatted;
+
+  function updateFormatCount(){
+    const output = document.getElementById('formatOutput');
+    const counter = document.getElementById('formatCount');
+    if(!output || !counter) return;
+    const n = String(output.value || '').split(/\r?\n|\r/).filter(Boolean).length;
+    counter.textContent = '結果: ' + n + ' 行';
+  }
+
+  // Inline: 指定リストを@始まりの行だけに整形（重複削除あり）
+  function formatListInline(textareaId, label){
+    const ta = document.getElementById(textareaId);
+    if(!ta) return;
+    const original = String(ta.value || '');
+    const lines = original.split(/\r?\n|\r/);
+    const kept = [];
+    const seen = new Set();
+    for(const raw of lines){
+      const s = raw.trim();
+      if(!s) continue;
+      if(s.startsWith('@')){
+        if(seen.has(s)) continue;
+        seen.add(s);
+        kept.push(s);
+      }
+    }
+    const beforeCount = lines.filter(l=>l.trim()).length;
+    const afterCount = kept.length;
+    const newText = kept.join('\n');
+    const currentNormalized = lines.filter(l=>l.trim()).join('\n');
+    if(newText === currentNormalized){
+      toast('変更はありませんでした');
+      return;
+    }
+    const ok = confirm(`${label}を整形しますか？\n総 ${beforeCount} 行 → ＠始まり ${afterCount} 行（重複除去）`);
+    if(!ok) return;
+    ta.value = newText;
+    toast(`🧹 整形しました: ${afterCount} 行`);
+    updateListCounts();
+  }
+
+  // 各リストの行数カウンタ
+  function countLines(text){
+    return String(text||'').split(/\r?\n|\r/).filter(s=>s.trim()).length;
+  }
+  function updateListCounts(){
+    const cA = document.getElementById('countA');
+    const cB = document.getElementById('countB');
+    const cC = document.getElementById('countC');
+    const cE = document.getElementById('countExclude');
+    const unit = t('lines_unit');
+    if(cA) cA.textContent = countLines(listA.value) + unit;
+    if(cB) cB.textContent = countLines(listB.value) + unit;
+    if(cC) cC.textContent = countLines(listC.value) + unit;
+    if(cE) cE.textContent = countLines(exclude.value) + unit;
+  }
+  [listA, listB, listC, exclude].forEach(el=>{ if(el) el.addEventListener('input', updateListCounts); });
+
+  // オーバーレイの外側クリック/ESCで閉じる
+  const formatOverlay = document.getElementById('formatOverlay');
+  if(formatOverlay){
+    formatOverlay.addEventListener('click', (e)=>{
+      if(e.target === formatOverlay) closeFormatter();
+    });
+    document.addEventListener('keydown', (e)=>{
+      if(e.key === 'Escape' && formatOverlay.classList.contains('show')) closeFormatter();
+    });
+  }
+  
+  function addProduct(){
+    const productHtml = `
+      <div class="product-item" data-index="${productIndex}">
+        <div class="form-row">
+          <span class="pill">${t('product_name')} <input type="text" class="product-name" value="" placeholder="${lang==='ja'?'空欄で自動設定':'Auto'}"></span>
+          <span class="pill">${t('winners')} <input type="number" class="product-winners" value="1" min="1"></span>
+          <button type="button" class="btn ghost remove-product" onclick="removeProduct(${productIndex})">${t('remove')}</button>
+        </div>
+      </div>
+    `;
+    productsContainer.insertAdjacentHTML('beforeend', productHtml);
+    productIndex++;
+    updateRemoveButtons();
+  }
+  
+  window.removeProduct = function(index){
+    const item = document.querySelector(`[data-index="${index}"]`);
+    if(item) item.remove();
+    updateRemoveButtons();
+  }
+  
+  function updateRemoveButtons(){
+    const items = document.querySelectorAll('.product-item');
+    items.forEach((item, idx) => {
+      const removeBtn = item.querySelector('.remove-product');
+      removeBtn.style.display = items.length > 1 ? 'inline-block' : 'none';
+    });
+  }
+
+  function saveData(){
+  // 二重クリック防止
+  if(saveData._busy) return; saveData._busy = true; setTimeout(()=> saveData._busy=false, 300);
+    const products = [];
+    document.querySelectorAll('.product-item').forEach(item => {
+      const rawName = item.querySelector('.product-name').value;
+      const cleanName = rawName
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // 制御文字除去
+        .trim()
+        .slice(0, 50);
+      products.push({
+        name: cleanName,
+        winners: Math.max(1, parseInt(item.querySelector('.product-winners').value) || 1)
+      });
+    });
+    
+    const data = {
+      listA: listA.value,
+      listB: listB.value,
+      listC: listC.value,
+      exclude: exclude.value,
+      pointsA: pointsA.value,
+      pointsB: pointsB.value,
+      pointsC: pointsC.value,
+      minPoints: minPoints.value,
+      products: products
+    };
+    
+    try {
+      localStorage.setItem('lottery_data', JSON.stringify(data));
+      toast('💾 データを保存しました');
+    } catch (e) {
+      toast('❌ 保存に失敗しました');
+    }
+    updateListCounts();
+  }
+
+  function resetData(){
+    if(!confirm('すべてのデータを初期状態に戻しますか？')){
+      return;
+    }
+    
+    // フォームをリセット
+    listA.value = '';
+    listB.value = '';
+    listC.value = '';
+    exclude.value = '';
+    pointsA.value = '1';
+    pointsB.value = '1';
+    pointsC.value = '1';
+    // 重複行は固定で1件扱い（UIなし）
+    minPoints.value = '1';
+    
+    // 商品をリセット
+    productsContainer.innerHTML = `
+      <div class="product-item" data-index="0">
+        <div class="form-row">
+          <span class="pill">${t('product_name')} <input type="text" class="product-name" value="" placeholder="${lang==='ja'?'空欄で自動設定':'Auto'}"></span>
+          <span class="pill">${t('winners')} <input type="number" class="product-winners" value="1" min="1"></span>
+          <button type="button" class="btn ghost remove-product" style="display:none;">${t('remove')}</button>
+        </div>
+      </div>
+    `;
+    productIndex = 1;
+    
+    // 保存データも削除
+    localStorage.removeItem('lottery_data');
+    
+    // 結果をクリア
+    lastWinners = [];
+    pool.clear();
+    
+    // テーブルと統計を更新
+    renderTable();
+    hideResultsModal();
+    
+    toast(lang==='ja' ? '🔄 リセット完了' : '🔄 Reset done');
+    applyI18n();
+    updateListCounts();
+  }
+
+  function loadData(){
+    try {
+      const saved = localStorage.getItem('lottery_data');
+      if(saved){
+        const data = JSON.parse(saved);
+        listA.value = data.listA || '';
+        listB.value = data.listB || '';
+        listC.value = data.listC || '';
+        exclude.value = data.exclude || '';
+        pointsA.value = data.pointsA || '1';
+        pointsB.value = data.pointsB || '1';
+        pointsC.value = data.pointsC || '1';
+        minPoints.value = data.minPoints || '1';
+        
+        // 商品データを復元
+        if(data.products && data.products.length > 0){
+          productsContainer.innerHTML = '';
+          data.products.forEach((product, index) => {
+            const productHtml = `
+              <div class="product-item" data-index="${index}">
+                <div class="form-row">
+                  <span class="pill">${t('product_name')} <input type="text" class="product-name" value="${product.name || ''}" placeholder="${lang==='ja'?'空欄で自動設定':'Auto'}"></span>
+                  <span class="pill">${t('winners')} <input type="number" class="product-winners" value="${product.winners || 1}" min="1"></span>
+                  <button type="button" class="btn ghost remove-product" onclick="removeProduct(${index})" style="display:${data.products.length > 1 ? 'inline-block' : 'none'}">${t('remove')}</button>
+                </div>
+              </div>
+            `;
+            productsContainer.insertAdjacentHTML('beforeend', productHtml);
+          });
+          productIndex = data.products.length;
+        }
+        toast('📂 保存データを読み込みました');
+      }
+    } catch (e) {
+      console.log('保存データの読み込みに失敗:', e);
+    }
+    // 追加セクションの初期開閉
+    try {
+      const savedOpen = localStorage.getItem('lottery_adv_open');
+      const hasExtras = (document.getElementById('listB').value.trim() || document.getElementById('listC').value.trim() || document.getElementById('exclude').value.trim());
+      setAdvancedOpen(savedOpen ? savedOpen === '1' : !!hasExtras);
+    } catch(e) {}
+    updateListCounts();
+  }
+
+  // ヘルプ機能（DOM読み込み後に初期化）
+  setTimeout(() => {
+    const helpToggle = document.querySelector('.help-toggle');
+    const helpOverlay = document.getElementById('helpOverlay');
+    
+    window.toggleHelp = function(){
+      helpOverlay.classList.toggle('show');
+    }
+    
+    if(helpToggle) helpToggle.onclick = toggleHelp;
+    if(helpOverlay) {
+      helpOverlay.onclick = (e) => {
+        if(e.target === helpOverlay) toggleHelp();
+      };
+    }
+    
+    // ESCキーでヘルプを閉じる
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if(helpOverlay && helpOverlay.classList.contains('show')){
+          toggleHelp();
+        } else {
+          hideResultsModal();
+        }
+      }
+    });
+  }, 100);
+
+  initTheme();
+  loadData();  // 起動時にデータを読み込み
+  applyI18n(); // 言語が日本語以外なら英語表示に切替
+})();
+</script>
+
+<!-- ヘルプボタン -->
+<button class="help-toggle" title="使い方を表示">?</button>
+
+<!-- ヘルプオーバーレイ -->
+<div class="help-overlay" id="helpOverlay">
+  <div class="help-content">
+    <button class="help-close" onclick="toggleHelp()">&times;</button>
+    <div class="help-title">📖 使い方ガイド</div>
+    <div class="help-step"><strong>1. リスト入力:</strong> まずはリストAに参加者名を1行ずつ入力。リストB/Cにも同一参加者名を追加で当選確率アップ。除外も設定可能。B/Cや除外は「＋ 追加のリスト/除外を表示」で開けます。</div>
+    <div class="help-step"><strong>整形（任意）:</strong> ごちゃ混ぜのテキストから <code>@</code> で始まる行だけを抽出したいときは、右上の「🧹 整形」ツールを使います。各リスト見出しの「🧹 整形」でも個別整形が可能（重複を自動で削除）。</div>
+    <div class="help-step"><strong>2. 商品設定:</strong> 商品名と当選人数を設定。「+ 商品を追加」で複数商品に対応。</div>
+    <div class="help-step"><strong>3. 抽選実行:</strong> 「抽選する」で開始。結果モーダル隣のボタンから「名前/CSV」をコピーできます。</div>
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);color:var(--muted);font-size:13px">
+      <div class="help-step"><strong>ポイント設定:</strong> 各リストのポイントを入力して当選しやすさを調整。</div>
+      <div class="help-step"><strong>確率確認:</strong> 「確率を計算」で候補者と当選確率を確認。</div>
+      <div class="help-step"><strong>保存/リセット/テーマ:</strong> 右上から操作。保存した内容は次回読み込み。</div>
+    </div>
+  </div>
+</div>
+
+<!-- 整形ツール オーバーレイ -->
+<div class="format-overlay" id="formatOverlay">
+  <div class="format-content">
+    <button class="format-close" onclick="(function(){document.getElementById('formatOverlay').classList.remove('show')})()">&times;</button>
+    <div class="format-title">🧹 リスト整形ツール</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:6px;">ごちゃ混ぜのテキストから「＠で始まる行」だけを抽出します。</div>
+    <textarea id="formatInput" class="format-input" placeholder="ここに貼り付け"></textarea>
+    <div class="format-row">
+      <label class="pill" style="margin:0;">
+        <input id="formatDedupe" type="checkbox" checked> 重複を削除
+      </label>
+      <button class="btn secondary" onclick="(function(){ if(window.extractAtLines) extractAtLines(); })()">＠で始まる行だけ抽出</button>
+      <button class="btn ghost" onclick="(function(){ const t=document.getElementById('formatInput'); if(t){ t.value=''; t.focus(); } })()">入力クリア</button>
+    </div>
+    <div class="format-label">抽出結果</div>
+    <textarea id="formatOutput" class="format-output" placeholder="抽出結果" readonly></textarea>
+    <div class="format-row" style="justify-content:space-between;align-items:center;">
+      <div id="formatCount" class="format-count">結果: 0 行</div>
+      <button class="btn primary" onclick="(function(){ if(window.copyFormatted) copyFormatted(); })()">結果をコピー</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
